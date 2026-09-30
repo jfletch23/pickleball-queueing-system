@@ -1,13 +1,49 @@
-import { Button } from "@/components/ui/button"
+import { useState, useLayoutEffect } from 'react';
+import LoginPage from '@/pages/LoginPage';
+import QueuePage from '@/pages/QueuePage';
+import ThemePage from '@/pages/ThemePage';
+import { type UserState, type ThemeName } from '@/types';
 
-function App() {
-  return (
-    <>
-       <h1 className="text-4xl font-bold text-blue-600 underline">pickleball queueing system</h1>
-       <Button>My button</Button>
+type Page = 'login' | 'queue' | 'themes';
 
-    </>
-  )
+export default function App() {
+  const [page, setPage] = useState<Page>('login');
+  const [user, setUser] = useState<UserState | null>(null);
+  const [theme, setTheme] = useState<ThemeName>('forest');
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  function handleEnter(u: UserState) {
+    setUser(u);
+    setPage('queue');
+  }
+
+  function handleLogout() {
+    setUser(null);
+    setPage('login');
+  }
+
+  if (page === 'themes') {
+    return (
+      <ThemePage
+        current={theme}
+        onSelect={(t) => { setTheme(t); setPage('queue'); }}
+        onBack={() => setPage('queue')}
+      />
+    );
+  }
+
+  if (page === 'queue' && user !== null) {
+    return (
+      <QueuePage
+        user={user}
+        onLogout={handleLogout}
+        onOpenThemes={() => setPage('themes')}
+      />
+    );
+  }
+
+  return <LoginPage onEnter={handleEnter} />;
 }
-
-export default App
