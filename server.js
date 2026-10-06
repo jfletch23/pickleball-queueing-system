@@ -149,7 +149,7 @@ app.post("/api/practices/:code/players", async (req, res) => {
     return res.status(404).json({ error: "Practice not found" });
   }
 
-const players = await db.findOne (`player_${code}`);
+const players = db.collection(`players_${code}`);
 
 let player = await players.findOne( { username: username.trim() });
 
@@ -163,6 +163,7 @@ if (player){
   try {
     const { insertedId } = await players.insertOne(player);
     player._id = insertedId;
+    res.status(200).send()
   }catch(err){
     if (err.code === 11000){
       return res.status(409).json ({error: " Username taken try again"})
