@@ -121,6 +121,39 @@ app.delete("/api/practices/:code", async (req, res) => {
 
 //add player to practice
 app.post("/api/practices/:code/players", async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const { username, password} = req.body
+  
+  if(!username?.trim() || !password){
+    return res.status(400).json({ error: "username and password are required" });
+  }
+
+  const practice = await practices.findOne({ code });
+  if (!practice) {
+    return res.status(404).json({ error: "Practice not found" });
+  }
+
+const players = await db.findOne (`player_${code}`);
+
+let player = await players.findOne( { username: username.trim() });
+
+if (player){
+  if(player.password !== password){
+     return res.status(401).json({ error: "Wrong Password" });
+  }
+
+}else{
+  player = {username: username.trim(), password: password, skillLevel: null};
+  try {
+    const { insertedId } = await players.insertOne(player);
+    player._id = insertedId;
+  }catch(err){
+    if (err.code === 11000){
+      return res.status(409).json ({error: " Username taken try again"})
+    }
+    throw err
+  }
+}
 });
 
 //add player to queue
