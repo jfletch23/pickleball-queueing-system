@@ -113,10 +113,26 @@ app.post("/api/practices", async (req, res) => {
 //TODO: add endpoints for the following:
 //get practice state
 app.get("/api/practices/:code", async (req, res) => {
+  const result = await practices.findOne({"code" : req.params.code}).toArray()
+  res.writeHead(200, {"Content-Type" : "application/json"})
+  res.end(JSON.stringify(result))
 });
 //end practice
 //drop player collection
-app.delete("/api/practices/:code", async (req, res) => {
+app.delete("/api/delete/practices/:code", async (req, res) => {
+  const delete_practice = await practices.deleteOne({"code" : req.params.code})
+  const player_collection = db.collection(`players_${req.params.code}`)
+  const drop_player_collection = await player_collection.drop()
+  console.log(drop_player_collection)
+  if (delete_practice.acknowledged != true || drop_player_collection != true) {
+    res.status(504).send()
+  } else if (delete_practice.deletedCount != 1) {
+    res.status(505).send()
+  }
+  else {
+    res.writeHead(200, {"Content-Type" : "application/json"})
+    res.end(JSON.stringify(delete_practice))
+  }
 });
 
 //add player to practice
