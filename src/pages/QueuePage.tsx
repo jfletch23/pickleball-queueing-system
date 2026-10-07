@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   type SkillLevel,
   type Court,
@@ -750,6 +750,22 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }, [courts, selectedCourtId]);
 
+  const myCourt = courts.find((c)=> c.players.some((p)=> p.id === user.id));
+  const prevCourtId = useRef<number | null | undefined>(undefined);
+
+  useEffect(()=>{
+    const courtId = myCourt?.id?? null;
+    if(
+      prevCourtId.current === null &&
+      courtId !== null &&
+      "Notifcication" in window && 
+      Notification.permission === "granted"
+    ){
+      new Notification( "Youre Up! ", {body: `Head to Court${courtId}`})
+    }
+    prevCourtId.current = courtId
+  },[myCourt?.id])
+
   function handleEndGame(courtId: number) {
     setCourts((prev) =>
       prev.map((c) => (c.id === courtId ? { ...c, players: [], startTime: null } : c))
@@ -757,6 +773,9 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   }
 
   function handleJoinQueue() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     const entryId = `user-${user.id}`;
     setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
     setQueue((prev) => [
@@ -855,6 +874,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   // Join a specific queue entry's group (replaces user's current queue entry)
   function handleJoinQueueEntry(entryId: string) {
+
     setQueue((prev) => {
       let updated = prev;
 
