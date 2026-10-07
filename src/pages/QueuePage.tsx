@@ -830,7 +830,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       ...prev,
       {
         id: lobbyId,
-        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel }],
+        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1 }],
         createdAt: Date.now(),
       },
     ]);
@@ -844,7 +844,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       {
         id: requestId,
         lobbyId,
-        player: { id: user.id, name: user.username, skillLevel: user.skillLevel },
+        player: { id: user.id, name: user.username, skillLevel: user.skillLevel?? 1 },
         requestedAt: Date.now(),
       },
     ]);
@@ -923,7 +923,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
         if (e.id !== entryId || e.players.length >= 4) return e;
         return {
           ...e,
-          players: [...e.players, { id: user.id, name: user.username, skillLevel: user.skillLevel }],
+          players: [...e.players, { id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1}],
         };
       });
 
