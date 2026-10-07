@@ -77,7 +77,7 @@ app.post("/api/practices", async (req, res) => {
 
   let result;
   try {
-    result = await practices.insertOne(practice);
+    result = await practices.insertOne({ code: req.params.code.toUpperCase() });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(500).json({ error: "Code collision, please try again" });
