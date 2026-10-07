@@ -8,13 +8,12 @@ import {
   type UserState,
   type Player,
   SKILL_LABELS,
+  type PracticeState,
 } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const INIT_NOW = Date.now();
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -75,84 +74,7 @@ function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<st
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
 
-function buildInitialCourts(): Court[] {
-  return [
-    {
-      id: 1,
-      startTime: INIT_NOW - (8 * 60 + 32) * 1000,
-      players: [
-        { id: 'p1', name: 'John', skillLevel: 2 },
-        { id: 'p2', name: 'Sarah', skillLevel: 2 },
-        { id: 'p3', name: 'Mike', skillLevel: 3 },
-        { id: 'p4', name: 'Lisa', skillLevel: 1 },
-      ],
-    },
-    {
-      id: 2,
-      startTime: INIT_NOW - (12 * 60 + 14) * 1000,
-      players: [
-        { id: 'p5', name: 'Chris', skillLevel: 3 },
-        { id: 'p6', name: 'Emma', skillLevel: 3 },
-        { id: 'p7', name: 'James', skillLevel: 2 },
-        { id: 'p8', name: 'Anna', skillLevel: 3 },
-      ],
-    },
-    {
-      id: 3,
-      startTime: INIT_NOW - (3 * 60 + 45) * 1000,
-      players: [
-        { id: 'p9', name: 'Tom', skillLevel: 1 },
-        { id: 'p10', name: 'Kate', skillLevel: 1 },
-        { id: 'p11', name: 'Bob', skillLevel: 1 },
-        { id: 'p12', name: 'Rachel', skillLevel: 2 },
-      ],
-    },
-    { id: 4, startTime: null, players: [] },
-  ];
-}
-
-function buildInitialQueue(): QueueEntry[] {
-  return [
-    {
-      id: 'q1',
-      players: [
-        { id: 'p13', name: 'David', skillLevel: 2, partyId: 'party1', isLeader: true },
-        { id: 'p14', name: 'Maya', skillLevel: 2, partyId: 'party1' },
-      ],
-      joinedAt: INIT_NOW - 5 * 60 * 1000,
-    },
-    {
-      id: 'q2',
-      players: [{ id: 'p15', name: 'Kevin', skillLevel: 3 }],
-      joinedAt: INIT_NOW - 4 * 60 * 1000,
-    },
-    {
-      id: 'q3',
-      players: [
-        { id: 'p16', name: 'Amy', skillLevel: 1, partyId: 'party2', isLeader: true },
-        { id: 'p17', name: 'Tyler', skillLevel: 1, partyId: 'party2' },
-      ],
-      joinedAt: INIT_NOW - 3 * 60 * 1000,
-    },
-    {
-      id: 'q4',
-      players: [{ id: 'p18', name: 'Sam', skillLevel: 2 }],
-      joinedAt: INIT_NOW - 2 * 60 * 1000,
-    },
-    {
-      id: 'q5',
-      players: [
-        { id: 'p19', name: 'Zoe', skillLevel: 2, partyId: 'party3', isLeader: true },
-        { id: 'p20', name: 'Luke', skillLevel: 2, partyId: 'party3' },
-      ],
-      joinedAt: INIT_NOW - 60 * 1000,
-    },
-  ];
-}
 
 // ---------------------------------------------------------------------------
 // Shared sub-components
@@ -760,13 +682,14 @@ function PartyLobbyRow({
 
 interface QueuePageProps {
   user: UserState;
+  practice: PracticeState | null
   onLogout: () => void;
   onOpenThemes: () => void;
 }
 
-export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePageProps) {
-  const [courts, setCourts] = useState<Court[]>(buildInitialCourts);
-  const [queue, setQueue] = useState<QueueEntry[]>(buildInitialQueue);
+export default function QueuePage({ user, practice, onLogout, onOpenThemes }: QueuePageProps) {
+  const [courts, setCourts] = useState<Court[]>(practice?.courts || []);
+  const [queue, setQueue] = useState<QueueEntry[]>(practice?.queueChips || []);
   const [now, setNow] = useState(Date.now());
   const [userEntryId, setUserEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -1039,9 +962,9 @@ export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePagePro
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-th-primary-light rounded-lg">
-              <span className="text-xs font-medium text-th-primary-light">Session</span>
+              <span className="text-xs font-medium text-th-primary-light">Practice</span>
               <span className="font-mono font-bold text-th-primary tracking-widest text-sm">
-                {user.sessionCode}
+                {practice?.code}
               </span>
             </div>
 
@@ -1053,11 +976,13 @@ export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePagePro
 
             {/* Skill circle + username on sm+, just skill circle on mobile */}
             <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-th">
-              <span
+              {user.skillLevel !== null && (
+                <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${SKILL_BG[user.skillLevel]}`}
               >
                 {user.skillLevel}
               </span>
+              )}
               <span className="text-sm font-medium text-th-body hidden sm:block">{user.username}</span>
             </div>
 

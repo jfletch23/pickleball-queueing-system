@@ -43,10 +43,17 @@ export interface UserState {
   id: string;
   username: string;
   password?: string;
-  skillLevel: SkillLevel;
+  skillLevel: SkillLevel | null;
   isAdmin: boolean;
-  sessionCode: string;
-  numCourts?: number;
+}
+
+export interface PracticeState {
+  code: string;
+  admins: UserState[];
+  courts: Court[];
+  numCourts: number;
+  party: UserState[];
+  queueChips: QueueEntry[];
 }
 
 export type ThemeName = 'forest' | 'dark' | 'ocean' | 'sunset';

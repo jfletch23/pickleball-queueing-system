@@ -59,7 +59,6 @@ app.post("/api/practices", async (req, res) => {
   if (
     !username?.trim() ||
     !password ||
-    ![1, 2, 3].includes(skillLevel) ||
     !Number.isInteger(numCourts) || numCourts < 1
   ) {
     return res.status(400).json({
@@ -113,7 +112,10 @@ app.post("/api/practices", async (req, res) => {
 //TODO: add endpoints for the following:
 //get practice state
 app.get("/api/practices/:code", async (req, res) => {
-  const result = await practices.findOne({"code" : req.params.code}).toArray()
+  const result = await practices.findOne({"code" : req.params.code})
+  if (!result) {
+    return res.status(404).json({ error: "Practice not found" });
+  }
   res.writeHead(200, {"Content-Type" : "application/json"})
   res.end(JSON.stringify(result))
 });
@@ -154,16 +156,23 @@ const players = db.collection(`players_${code}`);
 let player = await players.findOne( { username: username.trim() });
 
 if (player){
-  if(player.password !== password){
+  if(player.password !== password) {
      return res.status(401).json({ error: "Wrong Password" });
   }
-
-}else{
+  else {
+    console.log("Username already exists, correct password entered")
+    console.log(`Responding with ${player._id} and ${player.skillLevel}`)
+    res.writeHead(203, {"Content-Type" : "application/json"})
+    res.end(JSON.stringify({"player_id" : player._id, "skillLevel" : player.skillLevel}))
+  }
+//If player does not exist, need to create a new player
+} else {
   player = {username: username.trim(), password: password, skillLevel: null};
   try {
     const { insertedId } = await players.insertOne(player);
     player._id = insertedId;
-    res.status(200).send()
+    res.writeHead(200, {"Content-Type" : "application/json"})
+    res.end(JSON.stringify({"player_id" : insertedId}))
   }catch(err){
     if (err.code === 11000){
       return res.status(409).json ({error: " Username taken try again"})

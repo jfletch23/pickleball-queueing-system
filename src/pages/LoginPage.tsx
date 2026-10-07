@@ -1,80 +1,106 @@
 import { useState, type FormEvent } from 'react';
-import { type SkillLevel, SKILL_LABELS, type UserState } from '../types';
+import { type PracticeState, type UserState } from '../types';
 
-type AuthMode = 'login' | 'join' | 'create';
+type AuthMode = 'join' | 'create';
 
 interface LoginPageProps {
-  onEnter: (user: UserState) => void;
-}
-
-// bg-white is inside INACTIVE — this is the fix for the white-button bug.
-// When active, the active class provides its own bg; no base bg-white to conflict.
-const SKILL_ACTIVE: Record<SkillLevel, string> = {
-  1: 'bg-blue-500 text-white border-blue-500',
-  2: 'bg-amber-500 text-white border-amber-500',
-  3: 'bg-red-500 text-white border-red-500',
-};
-
-const SKILL_INACTIVE: Record<SkillLevel, string> = {
-  1: 'bg-white text-blue-600 border-gray-200 hover:bg-blue-50',
-  2: 'bg-white text-amber-600 border-gray-200 hover:bg-amber-50',
-  3: 'bg-white text-red-600 border-gray-200 hover:bg-red-50',
-};
-
-function SkillSelector({
-  value,
-  onChange,
-}: {
-  value: SkillLevel;
-  onChange: (v: SkillLevel) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-th-heading">Skill Level</label>
-      <div className="grid grid-cols-3 gap-2">
-        {([1, 2, 3] as SkillLevel[]).map((level) => (
-          <button
-            key={level}
-            type="button"
-            onClick={() => onChange(level)}
-            className={`py-3 rounded-xl font-bold transition-all border-2 ${
-              value === level ? SKILL_ACTIVE[level] : SKILL_INACTIVE[level]
-            }`}
-          >
-            <div className="text-sm font-bold">{SKILL_LABELS[level]}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  onEnter: (user: UserState, practice: PracticeState) => void;
 }
 
 export default function LoginPage({ onEnter }: LoginPageProps) {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>('join');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [sessionCode, setSessionCode] = useState('');
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>(2);
+  const [practiceCode, setPracticeCode] = useState('');
   const [numCourts, setNumCourts] = useState(4);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!username.trim()) return;
+    let user : UserState
+    let practice : PracticeState
+    
+    if (mode === "join") {
+      const response = await fetch(`/api/practices/${practiceCode}/players`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({username: username, password: password})
+      })
+      //Account exists but user entered wrong password
+      if (response.status === 401) {
+        window.alert("Wrong password!")
+        return
+      }
+      //Account exists and user entered correct password
+      else if (response.status == 203) {
+        const player_response = await response.json()
+        console.log(player_response)
+        user = {
+          id: player_response.player_id,
+          username: username,
+          password: password,
+          skillLevel: player_response.skillLevel,
+          isAdmin: false
+        }
+      }
+      //Account does not exist, it has been created
+      else {
+        const player_response = await response.json()
+        user = {
+          id: player_response.player_id,
+          username: username,
+          password: password,
+          skillLevel: null,
+          isAdmin: false
+        }
+      }
+      const practice_response = await fetch(`/api/practices/${practiceCode}`)
+      if (practice_response.status === 404) {
+        alert("Practice not found!")
+        return
+      } else {
+        const practice_json = await practice_response.json()
+        practice = {
+          code: practiceCode,
+          admins: practice_json.admins,
+          courts: practice_json.courts,
+          numCourts: practice_json.courtsNum,
+          party: practice_json.parties,
+          queueChips: practice_json.queueChips
+        }
+      }
+      //Else block means mode is create so fetch a different endpoint
+    } else {
+      const response = await fetch("/api/practices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({username: username, password: password, skillLevel: null, numCourts: numCourts})
+      })
+      const practice_response = await response.json()
+      
+      user = {
+        id: practice_response.admins[0],
+        username: username,
+        password: password,
+        skillLevel: null,
+        isAdmin: true,
+      }
 
-    const user: UserState = {
-      id: Math.random().toString(36).slice(2),
-      username: username.trim(),
-      password: mode !== 'join' ? password : undefined,
-      skillLevel: mode === 'login' ? 2 : skillLevel,
-      isAdmin: mode === 'create',
-      sessionCode:
-        mode === 'create'
-          ? Math.random().toString(36).slice(2, 8).toUpperCase()
-          : sessionCode.toUpperCase() || 'DEMO01',
-      numCourts: mode === 'create' ? numCourts : undefined,
-    };
-
-    onEnter(user);
+      practice = {
+        code: practice_response.code,
+        admins: [user],
+        courts: [],
+        numCourts: numCourts,
+        party: [],
+        queueChips: []
+      }
+    }
+    console.log(user)
+    console.log(practice)
+    onEnter(user, practice);
   }
 
   return (
@@ -104,7 +130,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
         <div className="bg-th-card rounded-3xl shadow-2xl overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-th">
-            {(['login', 'join', 'create'] as AuthMode[]).map((tab) => (
+            {(['join', 'create'] as AuthMode[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -113,7 +139,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
                   mode === tab ? 'tab-th-active' : 'border-transparent text-th-muted hover:text-th-heading'
                 }`}
               >
-                {tab === 'login' ? 'Sign In' : tab === 'join' ? 'Join Session' : 'Create Session'}
+                {tab === 'join' ? 'Join Session' : 'Create Session'}
               </button>
             ))}
           </div>
@@ -134,7 +160,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
             </div>
 
             {/* Password */}
-            {(mode === 'login' || mode === 'create') && (
+            {(mode === 'join' || mode === 'create') && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-th-heading">Password</label>
                 <input
@@ -148,9 +174,10 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
               </div>
             )}
 
-            {/* Skill Level */}
-            {(mode === 'join' || mode === 'create') && (
-              <SkillSelector value={skillLevel} onChange={setSkillLevel} />
+            {(mode === 'join') && (
+              <p className="text-center text-xs text-th-muted">
+                First time playing today? Enter a new username and password and an account will be automatically created for you. 
+              </p>
             )}
 
             {/* Session Code */}
@@ -159,8 +186,8 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
                 <label className="block text-sm font-medium text-th-heading">Session Code</label>
                 <input
                   type="text"
-                  value={sessionCode}
-                  onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                  value={practiceCode}
+                  onChange={(e) => setPracticeCode(e.target.value.toUpperCase())}
                   placeholder="ABC123"
                   maxLength={6}
                   required
@@ -199,13 +226,11 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
               type="submit"
               className="bg-th-primary w-full py-3.5 rounded-xl text-base font-bold shadow-lg transition-colors"
             >
-              {mode === 'login' && 'Sign In →'}
               {mode === 'join' && 'Join Session →'}
               {mode === 'create' && 'Create Session →'}
             </button>
 
             <p className="text-center text-xs text-th-muted">
-              {mode === 'login' && 'Sign in with your existing credentials.'}
               {mode === 'join' && 'Get the 6-character session code from your admin.'}
               {mode === 'create' && "As admin, you'll control courts and advance the queue."}
             </p>
