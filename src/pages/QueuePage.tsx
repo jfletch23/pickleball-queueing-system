@@ -758,10 +758,10 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     if(
       prevCourtId.current === null &&
       courtId !== null &&
-      "Notifcication" in window && 
+      "Notification" in window && 
       Notification.permission === "granted"
     ){
-      new Notification( "Youre Up! ", {body: `Head to Court${courtId}`})
+      new Notification( "Youre Up! ", {body: `Head to Court ${courtId}`})
     }
     prevCourtId.current = courtId
   },[myCourt?.id])
