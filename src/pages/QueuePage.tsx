@@ -59,7 +59,7 @@ function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<st
         usedIds.add(entry.id);
         if (gathered.length === 4) break;
       }
-      // overflow — skip, keep looking in this bracket
+      // overflow, skip and keep looking in this bracket
     }
 
     if (gathered.length === 4) return { players: gathered, usedIds };
@@ -158,7 +158,7 @@ function SkillBadge({ level }: { level: SkillLevel }) {
   );
 }
 
-// Court card — admin End button still works, otherwise display only
+// Court card, display only (admin End button still works)
 
 function CourtCard({
   court,
@@ -252,7 +252,7 @@ function CourtCard({
   );
 }
 
-// Court admin view — tap a court to manage its players
+// Court admin view, tap a court to manage its players
 
 function CourtAdminView({
   court,
@@ -397,12 +397,12 @@ function QueueEntryDetailView({
           <span className="text-3xl">{isFull ? '🎾' : '⏳'}</span>
           <div>
             <div className={`font-bold text-lg ${isFull ? 'text-white' : 'text-th-primary'}`}>
-              {isFull ? 'Group is full — heading to a court!' : 'Waiting for players'}
+              {isFull ? "Group's full, next court is yours" : 'Waiting for players'}
             </div>
             <div className={`text-sm ${isFull ? 'text-white/70' : 'text-th-muted'}`}>
               {isFull
-                ? 'This group will be assigned to the next available court.'
-                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? 's' : ''} to start a game.`}
+                ? "You'll get bumped to the next open court."
+                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? 's' : ''}.`}
             </div>
           </div>
         </div>
@@ -476,7 +476,7 @@ function QueueEntryDetailView({
                   Looking for {4 - entry.players.length} more player{4 - entry.players.length !== 1 ? 's' : ''}!
                 </div>
                 <div className="text-xs text-th-muted mt-0.5">
-                  Tell others your name — they can tap your group in the queue to join your party.
+                  Tell others your name so they can find and join your group.
                 </div>
               </div>
             )}
@@ -696,7 +696,7 @@ function PartyLobbyRow({
         <div className="sm:hidden shrink-0">{actions}</div>
       </div>
 
-      {/* Pending join requests — visible to party owner only */}
+      {/* Pending join requests, visible to the party owner only */}
       {isUserLobby && pendingRequests.length > 0 && (
         <div className="mt-3 pt-3 border-t border-th space-y-2">
           <div className="text-xs font-bold text-th-heading">
@@ -1119,7 +1119,7 @@ export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePagePro
           <div className="flex items-start justify-between mb-4 gap-3">
             <div>
               <h2 className="text-xl font-bold text-th-heading">Party Lobbies</h2>
-              <p className="text-xs text-th-muted mt-0.5">Assemble your group before entering the queue.</p>
+              <p className="text-xs text-th-muted mt-0.5">Group up with friends before you join the queue.</p>
             </div>
             {userEntryId === null && userOnCourt === null && userLobbyId === null && (
               <button
@@ -1135,7 +1135,7 @@ export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePagePro
             <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
               <div className="text-2xl mb-1">🎾</div>
               <div className="font-semibold">No open parties</div>
-              <div className="text-xs mt-0.5">Start one to play with friends!</div>
+              <div className="text-xs mt-0.5">Start one to play with friends.</div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1197,7 +1197,7 @@ export default function QueuePage({ user, onLogout, onOpenThemes }: QueuePagePro
                 className="w-14 h-14 object-cover rounded-full opacity-30 mx-auto mb-3"
               />
               <div className="font-semibold text-lg">Queue is empty</div>
-              <div className="text-sm mt-1">Join the queue to get on a court!</div>
+              <div className="text-sm mt-1">Join the queue to get on a court.</div>
             </div>
           ) : (
             <div className="space-y-2">

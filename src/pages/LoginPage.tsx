@@ -204,15 +204,15 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
             </button>
 
             <p className="text-center text-xs text-th-muted">
-              {mode === 'login' && 'Sign in with your existing credentials.'}
-              {mode === 'join' && 'Get the 6-character session code from your admin.'}
-              {mode === 'create' && "As admin, you'll control courts and advance the queue."}
+              {mode === 'login' && 'Use your existing account.'}
+              {mode === 'join' && 'Ask your admin for the 6-character code.'}
+              {mode === 'create' && "You'll be admin — manage courts and the queue."}
             </p>
           </form>
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--th-login-sub)' }}>
-          Session data is cleared at the end of each practice
+          Data resets after each practice
         </p>
       </div>
     </div>
