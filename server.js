@@ -112,7 +112,7 @@ app.post("/api/practices", async (req, res) => {
 //TODO: add endpoints for the following:
 //get practice state
 app.get("/api/practices/:code", async (req, res) => {
-  const result = await practices.findOne({"code" : req.params.code})
+  const result = await practices.findOne({"code" : req.params.code.toUpperCase})
   if (!result) {
     return res.status(404).json({ error: "Practice not found" });
   }
