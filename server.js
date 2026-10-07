@@ -137,6 +137,22 @@ app.delete("/api/delete/practices/:code", async (req, res) => {
   }
 });
 
+//save courts+ queuechips
+app.put("/api/practices/:code/state", async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const { courts, queueChips } = req.body;
+
+  if (!Array.isArray(courts) || !Array.isArray(queueChips)) {
+    return res.status(400).json({ error: "courts and queueChips must be arrays" });
+  }
+
+  const result = await practices.updateOne({ code }, { $set: { courts, queueChips } });
+  if (result.matchedCount === 0) {
+    return res.status(404).json({ error: "Practice not found" });
+  }
+  return res.json({ ok: true });
+});
+
 //add player to practice
 app.post("/api/practices/:code/players", async (req, res) => {
   const code = req.params.code.toUpperCase();
