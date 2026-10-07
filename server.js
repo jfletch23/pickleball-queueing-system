@@ -47,7 +47,7 @@ function makeCode() {
 
 function makeCourts(n) {
   return Array.from({ length: n }, (_, i) => ({
-    courtId: i + 1,
+    id: i + 1,
     players: [],
     startTime: null,
   }));
