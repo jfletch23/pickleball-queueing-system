@@ -7,8 +7,7 @@ interface LoginPageProps {
   onEnter: (user: UserState) => void;
 }
 
-// bg-white is inside INACTIVE — this is the fix for the white-button bug.
-// When active, the active class provides its own bg; no base bg-white to conflict.
+// bg-white only lives in INACTIVE so it can't override the active color
 const SKILL_ACTIVE: Record<SkillLevel, string> = {
   1: 'bg-blue-500 text-white border-blue-500',
   2: 'bg-amber-500 text-white border-amber-500',
@@ -64,7 +63,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
     const user: UserState = {
       id: Math.random().toString(36).slice(2),
       username: username.trim(),
-      password: mode !== 'join' ? password : undefined,
+      password,
       skillLevel: mode === 'login' ? 2 : skillLevel,
       isAdmin: mode === 'create',
       sessionCode:
@@ -134,7 +133,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
             </div>
 
             {/* Password */}
-            {(mode === 'login' || mode === 'create') && (
+            {(mode === 'login' || mode === 'create' || mode === 'join') && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-th-heading">Password</label>
                 <input
