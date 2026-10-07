@@ -10,6 +10,8 @@ const db = client.db("PickleballDB");
 
 const app = express();
 app.use(express.json());
+app.use(express.static("dist"));
+
 
 const practices = db.collection("practices");
 await practices.createIndex({ code: 1 }, { unique: true });
@@ -190,5 +192,10 @@ if (player){
 //leave party
 //send and get invites
 //accept invite
+//send index.html for any non-API route so React handles it
+app.get("/{*splat}", (req, res) => {
+  res.sendFile("index.html", { root: "dist" });
+});
 
-app.listen(3001, () => console.log("Server running on http://localhost:3001"));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
