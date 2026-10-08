@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  type SkillLevel,
   type Court,
-  type QueueEntry,
+  type QueueChip,
   type PartyLobby,
   type PartyJoinRequest,
   type UserState,
   type Player,
-  SKILL_LABELS,
   type PracticeState,
 } from '../types';
 

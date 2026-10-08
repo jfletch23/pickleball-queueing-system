@@ -121,27 +121,29 @@ const joinPractice = async (req, res) => {
         username: username, 
         password: password, 
       };
-      const result = await practices.updateOne(
+      const result = await practices.findOneAndUpdate(
         {code: code},
         {
           $push: {
             players: user
           }
-        }
+        },
+        {returnDocument: "after"}
       )
-      if (result.matchedCount === 0) {
-        res.status(400).json({error : "Could not update players array in specified practice"})
+      if (!result) {
+        res.status(500).json({error : "Could not update players array in specified practice"})
         return
       }
       else {
-        res.status(200).json(result)
+        res.status(200).json({result, user})
         return
       }
     } //end of if block saying player does not exist
     //player does exist
     else {
       if (player.password === password) {
-        res.status(200).json({success : "Successfully logged in"})
+        const existing_user = await practices.findOne({"code" : code, "players.username" : username, "players.password": password}, {projection: {_id: 0, "players.$" : 1}})
+        res.status(201).json({success : "Successfully logged in", practice: practice, user: existing_user.players[0]})
         return
       }
       else {

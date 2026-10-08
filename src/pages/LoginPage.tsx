@@ -16,23 +16,48 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    let user : UserState
-    let practice : PracticeState
-    //TODO: make this work
-    user = {
-      id: "fakeid",
-      username: "fakeusername",
-      password: "fakepassword"
-    }
-    practice = {
-      code: "ABC123",
-      players: [user],
-      admins: [user.id],
-      numCourts: 4
-    }
-    console.log(user)
-    console.log(practice)
-    onEnter(user, practice);
+    if (mode === "create") {
+      const create_practice = await fetch("/api/create/practice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({username: username, password: password, numCourts: numCourts})
+      })
+      if (create_practice.status === 200) {
+        const practice = await create_practice.json()
+        //Only will be 1 player in the practice players array since just created the practice
+        const user = practice.players[0]
+        onEnter(user, practice)
+      }
+      else {
+        window.alert("Error creating a new practice, please try again")
+      }
+    } //end create mode block
+    else if (mode === 'join') {
+      const join_practice = await fetch(`/api/practice/${practiceCode}/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({username: username, password: password})
+      })
+      if (join_practice.status === 400) {
+        window.alert("Wrong password entered! If you are trying to create an account, this username already exists.")
+      } else if (join_practice.status === 500) {
+        window.alert("Server error")
+      }
+      //Creating a new user
+      else if (join_practice.status === 200) {
+        const {result, user} = await join_practice.json()
+        onEnter(user, result);
+      }
+      //Logging in as a pre-existing user
+      else if (join_practice.status === 201) {
+        const {success, practice, user} = await join_practice.json()
+        onEnter(user, practice)
+      }
+    }    
   }
 
   return (
