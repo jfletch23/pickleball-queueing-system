@@ -1,29 +1,39 @@
-export type SkillLevel = 1 | 2 | 3;
+export interface UserState {
+  id: string;
+  username: string;
+  password: string;
+}
 
-export const SKILL_LABELS: Record<SkillLevel, string> = {
-  1: 'Beginner',
-  2: 'Intermediate',
-  3: 'Advanced',
-};
+export interface PracticeState {
+  code: string;
+  players: UserState[];
+  admins: string[];
+  numCourts: number;
+  party: UserState[];
+}
+//Come back to this, may need to make modifications (maybe remove rank key, add courtNum, and playingStartTime key??)
+export interface QueueChip {
+  id: string;
+  practiceCode: string;
+  players: UserState[];
+  status: string;
+  createdAt: Date; 
+  rank: number;
+}
 
+//Maybe no longer needed?
 export interface Player {
   id: string;
   name: string;
-  skillLevel: SkillLevel;
   partyId?: string;
   isLeader?: boolean;
 }
 
+//Maybe no longer needed?
 export interface Court {
   id: number;
-  players: Player[];
+  players: UserState[];
   startTime: number | null;
-}
-
-export interface QueueEntry {
-  id: string;
-  players: Player[];
-  joinedAt: number;
 }
 
 export interface PartyLobby {
@@ -37,23 +47,6 @@ export interface PartyJoinRequest {
   lobbyId: string;
   player: Player;
   requestedAt: number;
-}
-
-export interface UserState {
-  id: string;
-  username: string;
-  password?: string;
-  skillLevel: SkillLevel | null;
-  isAdmin: boolean;
-}
-
-export interface PracticeState {
-  code: string;
-  admins: UserState[];
-  courts: Court[];
-  numCourts: number;
-  party: UserState[];
-  queueChips: QueueEntry[];
 }
 
 export type ThemeName = 'forest' | 'dark' | 'ocean' | 'sunset';
