@@ -17,7 +17,7 @@ export interface QueueChip {
   practiceCode: string;
   players: UserState[];
   status: string;
-  createdAt: Date; 
+  createdAt: Date;
   rank: number;
 }
 
@@ -32,8 +32,18 @@ export interface Player {
 //Maybe no longer needed?
 export interface Court {
   id: number;
-  players: UserState[];
+  chipId: string | null;
+  players: Player[];
   startTime: number | null;
+}
+export interface QueueEntry {
+  id: string;
+  players: Player[];
+  joinedAt: number;
+}
+export interface DashboardState {
+  queue: QueueEntry[];
+  courts: Court[];
 }
 
 export interface PartyLobby {
@@ -49,7 +59,7 @@ export interface PartyJoinRequest {
   requestedAt: number;
 }
 
-export type ThemeName = 'forest' | 'dark' | 'ocean' | 'sunset';
+export type ThemeName = "forest" | "dark" | "ocean" | "sunset";
 
 export interface ThemeInfo {
   name: string;
@@ -59,23 +69,23 @@ export interface ThemeInfo {
 
 export const THEMES: Record<ThemeName, ThemeInfo> = {
   forest: {
-    name: 'Forest',
-    description: 'Green, like the court',
-    swatches: ['#15803d', '#16a34a', '#84cc16', '#f9fafb'],
+    name: "Forest",
+    description: "Green, like the court",
+    swatches: ["#15803d", "#16a34a", "#84cc16", "#f9fafb"],
   },
   dark: {
-    name: 'Dark',
-    description: 'For practices that run late',
-    swatches: ['#111827', '#1f2937', '#22c55e', '#374151'],
+    name: "Dark",
+    description: "For practices that run late",
+    swatches: ["#111827", "#1f2937", "#22c55e", "#374151"],
   },
   ocean: {
-    name: 'Ocean',
-    description: 'Blue, kinda chill',
-    swatches: ['#1e3a8a', '#2563eb', '#7dd3fc', '#eff6ff'],
+    name: "Ocean",
+    description: "Blue, kinda chill",
+    swatches: ["#1e3a8a", "#2563eb", "#7dd3fc", "#eff6ff"],
   },
   sunset: {
-    name: 'Sunset',
-    description: 'Orange and warm',
-    swatches: ['#9a3412', '#ea580c', '#fb923c', '#fff7ed'],
+    name: "Sunset",
+    description: "Orange and warm",
+    swatches: ["#9a3412", "#ea580c", "#fb923c", "#fff7ed"],
   },
 };

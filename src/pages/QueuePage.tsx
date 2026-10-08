@@ -1,85 +1,88 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import {
   type Court,
-  type QueueChip,
+  type QueueEntry,
   type PartyLobby,
   type PartyJoinRequest,
   type UserState,
-  type Player,
   type PracticeState,
-} from '../types';
+  type DashboardState,
+} from "../types";
+import { useQueueSocket } from "../useQueueSocket";
 
 // Helpers
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const SKILL_BG: Record<SkillLevel, string> = {
-  1: 'bg-blue-500',
-  2: 'bg-amber-500',
-  3: 'bg-red-500',
-};
+//COMMENTED OUT SKILL RELATED CODE
+//LEFT IN INCASE THERE IS A FUTURE NEED FOR IT
+
+// const SKILL_BG: Record<SkillLevel, string> = {
+//   1: 'bg-blue-500',
+//   2: 'bg-amber-500',
+//   3: 'bg-red-500',
+// };
 
 // Majority skill level in an entry; ties go to the first player
-function getEntrySkillLevel(entry: QueueEntry): SkillLevel {
-  const counts = new Map<SkillLevel, number>();
-  for (const p of entry.players) {
-    counts.set(p.skillLevel, (counts.get(p.skillLevel) ?? 0) + 1);
-  }
-  let best = entry.players[0].skillLevel;
-  let bestCount = 0;
-  for (const [level, count] of counts) {
-    if (count > bestCount) { best = level; bestCount = count; }
-  }
-  return best;
-}
+// function getEntrySkillLevel(entry: QueueEntry): SkillLevel {
+//   const counts = new Map<SkillLevel, number>();
+//   for (const p of entry.players) {
+//     counts.set(p.skillLevel, (counts.get(p.skillLevel) ?? 0) + 1);
+//   }
+//   let best = entry.players[0].skillLevel;
+//   let bestCount = 0;
+//   for (const [level, count] of counts) {
+//     if (count > bestCount) { best = level; bestCount = count; }
+//   }
+//   return best;
+// }
 
 // Fills a court with exactly 4 players of the same skill level, FIFO within bracket
-function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<string> } | null {
-  const triedLevels = new Set<SkillLevel>();
+// function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<string> } | null {
+//   const triedLevels = new Set<SkillLevel>();
 
-  for (const startEntry of queue) {
-    const targetSkill = getEntrySkillLevel(startEntry);
-    if (triedLevels.has(targetSkill)) continue;
-    triedLevels.add(targetSkill);
+//   for (const startEntry of queue) {
+//     const targetSkill = getEntrySkillLevel(startEntry);
+//     if (triedLevels.has(targetSkill)) continue;
+//     triedLevels.add(targetSkill);
 
-    const gathered: Player[] = [];
-    const usedIds = new Set<string>();
+//     const gathered: Player[] = [];
+//     const usedIds = new Set<string>();
 
-    for (const entry of queue) {
-      if (getEntrySkillLevel(entry) !== targetSkill) continue;
-      if (gathered.length + entry.players.length <= 4) {
-        gathered.push(...entry.players);
-        usedIds.add(entry.id);
-        if (gathered.length === 4) break;
-      }
-      // overflow, skip and keep looking in this bracket
-    }
+//     for (const entry of queue) {
+//       if (getEntrySkillLevel(entry) !== targetSkill) continue;
+//       if (gathered.length + entry.players.length <= 4) {
+//         gathered.push(...entry.players);
+//         usedIds.add(entry.id);
+//         if (gathered.length === 4) break;
+//       }
+//       // overflow, skip and keep looking in this bracket
+//     }
 
-    if (gathered.length === 4) return { players: gathered, usedIds };
-  }
+//     if (gathered.length === 4) return { players: gathered, usedIds };
+//   }
 
-  return null;
-}
+//   return null;
+// }
 
 // Mock data
 
-
 // Shared sub-components
 
-function SkillBadge({ level }: { level: SkillLevel }) {
-  return (
-    <span
-      className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white shrink-0 ${SKILL_BG[level]}`}
-      title={SKILL_LABELS[level]}
-    >
-      {SKILL_LABELS[level]}
-    </span>
-  );
-}
+// function SkillBadge({ level }: { level: SkillLevel }) {
+//   return (
+//     <span
+//       className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white shrink-0 ${SKILL_BG[level]}`}
+//       title={SKILL_LABELS[level]}
+//     >
+//       {SKILL_LABELS[level]}
+//     </span>
+//   );
+// }
 
 // Court card, display only (admin End button still works)
 
@@ -104,16 +107,18 @@ function CourtCard({
 
   return (
     <div
-      className={`rounded-2xl overflow-hidden shadow-md border border-th flex flex-col ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+      className={`rounded-2xl overflow-hidden shadow-md border border-th flex flex-col ${onClick ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
       onClick={onClick}
     >
       {/* Header */}
       <div
         className={`px-4 py-3 flex items-center justify-between gap-2 ${
-          isActive ? 'bg-th-court' : 'bg-gray-100'
+          isActive ? "bg-th-court" : "bg-gray-100"
         }`}
       >
-        <span className={`font-bold text-sm shrink-0 ${isActive ? 'text-white' : 'text-gray-500'}`}>
+        <span
+          className={`font-bold text-sm shrink-0 ${isActive ? "text-white" : "text-gray-500"}`}
+        >
           Court {court.id}
         </span>
         {isActive ? (
@@ -123,7 +128,10 @@ function CourtCard({
             </span>
             {isAdmin && (
               <button
-                onClick={(e) => { e.stopPropagation(); onEndGame(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEndGame();
+                }}
                 className="text-[10px] font-bold text-white/80 hover:text-white bg-white/15 hover:bg-white/25 px-2 py-0.5 rounded-full transition-colors shrink-0"
               >
                 End ▶
@@ -148,11 +156,14 @@ function CourtCard({
               <span className="text-sm font-medium text-th-body flex-1 truncate">
                 {player.name}
               </span>
-              <SkillBadge level={player.skillLevel} />
+              {/* <SkillBadge level={player.skillLevel} /> */}
             </div>
           ))}
           {Array.from({ length: 4 - court.players.length }).map((_, i) => (
-            <div key={`empty-${i}`} className="flex items-center gap-2 opacity-30">
+            <div
+              key={`empty-${i}`}
+              className="flex items-center gap-2 opacity-30"
+            >
               <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center shrink-0">
                 <span className="text-gray-400 text-xs">+</span>
               </div>
@@ -168,7 +179,9 @@ function CourtCard({
             className="w-12 h-12 object-cover rounded-full opacity-40 mb-2"
           />
           <div className="font-semibold text-th-primary">Available</div>
-          <div className="text-xs text-th-muted mt-0.5">Waiting for a full group</div>
+          <div className="text-xs text-th-muted mt-0.5">
+            Waiting for a full group
+          </div>
         </div>
       )}
     </div>
@@ -206,8 +219,12 @@ function CourtAdminView({
             ← Courts
           </button>
           <div className="flex-1">
-            <h1 className="font-bold text-th-heading text-lg">Court {court.id}</h1>
-            <p className="text-xs text-th-muted">⏱ {formatTime(elapsed)} · {court.players.length}/4 players</p>
+            <h1 className="font-bold text-th-heading text-lg">
+              Court {court.id}
+            </h1>
+            <p className="text-xs text-th-muted">
+              ⏱ {formatTime(elapsed)} · {court.players.length}/4 players
+            </p>
           </div>
           <button
             onClick={onEndGame}
@@ -229,13 +246,15 @@ function CourtAdminView({
                 className="bg-th-card rounded-2xl p-4 flex flex-col items-center text-center border border-th"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2 ${SKILL_BG[player.skillLevel]}`}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2 bg-th-primary`}
                 >
                   {player.name.charAt(0)}
                 </div>
-                <div className="font-bold text-th-heading text-sm">{player.name}</div>
+                <div className="font-bold text-th-heading text-sm">
+                  {player.name}
+                </div>
                 <div className="mt-1">
-                  <SkillBadge level={player.skillLevel} />
+                  {/* <SkillBadge level={player.skillLevel} /> */}
                 </div>
                 {isPromoted ? (
                   <span className="mt-1 text-[10px] font-black text-orange-800 bg-orange-100 px-2 py-0.5 rounded-full">
@@ -297,9 +316,14 @@ function QueueEntryDetailView({
             ← Queue
           </button>
           <div className="flex-1">
-            <h1 className="font-bold text-th-heading text-lg">#{position} in Queue</h1>
+            <h1 className="font-bold text-th-heading text-lg">
+              #{position} in Queue
+            </h1>
             <p className="text-xs text-th-muted">
-              {entry.players.length}/4 players · {isFull ? 'Ready to play!' : `${4 - entry.players.length} spot${4 - entry.players.length !== 1 ? 's' : ''} open`}
+              {entry.players.length}/4 players ·{" "}
+              {isFull
+                ? "Ready to play!"
+                : `${4 - entry.players.length} spot${4 - entry.players.length !== 1 ? "s" : ""} open`}
             </p>
           </div>
           {isFull && (
@@ -314,18 +338,24 @@ function QueueEntryDetailView({
         {/* Status banner */}
         <div
           className={`rounded-2xl p-4 flex items-center gap-3 ${
-            isFull ? 'bg-th-primary' : 'bg-th-primary-light'
+            isFull ? "bg-th-primary" : "bg-th-primary-light"
           }`}
         >
-          <span className="text-3xl">{isFull ? '🎾' : '⏳'}</span>
+          <span className="text-3xl">{isFull ? "🎾" : "⏳"}</span>
           <div>
-            <div className={`font-bold text-lg ${isFull ? 'text-white' : 'text-th-primary'}`}>
-              {isFull ? "Group's full, next court is yours" : 'Waiting for players'}
+            <div
+              className={`font-bold text-lg ${isFull ? "text-white" : "text-th-primary"}`}
+            >
+              {isFull
+                ? "Group's full, next court is yours"
+                : "Waiting for players"}
             </div>
-            <div className={`text-sm ${isFull ? 'text-white/70' : 'text-th-muted'}`}>
+            <div
+              className={`text-sm ${isFull ? "text-white/70" : "text-th-muted"}`}
+            >
               {isFull
                 ? "You'll get bumped to the next open court."
-                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? 's' : ''}.`}
+                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? "s" : ""}.`}
             </div>
           </div>
         </div>
@@ -342,13 +372,15 @@ function QueueEntryDetailView({
                   className="bg-th-card rounded-2xl p-4 flex flex-col items-center text-center border border-th"
                 >
                   <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2 ${SKILL_BG[player.skillLevel]}`}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2 bg-th-primary`}
                   >
                     {player.name.charAt(0)}
                   </div>
-                  <div className="font-bold text-th-heading text-sm">{player.name}</div>
+                  <div className="font-bold text-th-heading text-sm">
+                    {player.name}
+                  </div>
                   <div className="mt-1">
-                    <SkillBadge level={player.skillLevel} />
+                    {/* <SkillBadge level={player.skillLevel} /> */}
                   </div>
                   {player.id === user.id && (
                     <span className="mt-1.5 text-[10px] font-black text-yellow-800 bg-yellow-200 px-2 py-0.5 rounded-full">
@@ -360,14 +392,16 @@ function QueueEntryDetailView({
                       Admin
                     </span>
                   )}
-                  {user.isAdmin && player.id !== user.id && !isPromotedAdmin && (
-                    <button
-                      onClick={() => onMakeAdmin(player.id)}
-                      className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
-                    >
-                      Make Admin
-                    </button>
-                  )}
+                  {/* {user.isAdmin &&
+                    player.id !== user.id &&
+                    !isPromotedAdmin && (
+                      <button
+                        onClick={() => onMakeAdmin(player.id)}
+                        className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
+                      >
+                        Make Admin
+                      </button>
+                    )} */}
                 </div>
               );
             })}
@@ -381,7 +415,9 @@ function QueueEntryDetailView({
                 <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-2">
                   <span className="text-2xl text-gray-300">+</span>
                 </div>
-                <div className="text-th-muted text-sm font-medium">Open Slot</div>
+                <div className="text-th-muted text-sm font-medium">
+                  Open Slot
+                </div>
               </div>
             ))}
           </div>
@@ -396,7 +432,8 @@ function QueueEntryDetailView({
             {!isFull && (
               <div className="bg-th-primary-light rounded-xl p-3 text-center">
                 <div className="font-semibold text-th-primary text-sm">
-                  Looking for {4 - entry.players.length} more player{4 - entry.players.length !== 1 ? 's' : ''}!
+                  Looking for {4 - entry.players.length} more player
+                  {4 - entry.players.length !== 1 ? "s" : ""}!
                 </div>
                 <div className="text-xs text-th-muted mt-0.5">
                   Tell others your name so they can find and join your group.
@@ -452,8 +489,8 @@ function QueueEntryRow({
       onClick={onClick}
       className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors cursor-pointer ${
         isUser
-          ? 'bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-400'
-          : 'bg-th-card border border-th hover:shadow-sm hover:border-th-primary'
+          ? "bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-400"
+          : "bg-th-card border border-th hover:shadow-sm hover:border-th-primary"
       }`}
     >
       <div className="w-8 text-center font-black text-2xl text-gray-300 shrink-0 leading-none">
@@ -466,8 +503,10 @@ function QueueEntryRow({
             <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
               {player.name.charAt(0)}
             </div>
-            <span className="text-sm font-medium text-th-body">{player.name}</span>
-            <SkillBadge level={player.skillLevel} />
+            <span className="text-sm font-medium text-th-body">
+              {player.name}
+            </span>
+            {/* <SkillBadge level={player.skillLevel} /> */}
           </div>
         ))}
       </div>
@@ -559,7 +598,9 @@ function PartyLobbyRow({
   return (
     <div
       className={`rounded-2xl p-4 border-2 transition-colors ${
-        isUserLobby ? 'border-th-primary bg-th-primary-light' : 'bg-th-card border-th'
+        isUserLobby
+          ? "border-th-primary bg-th-primary-light"
+          : "bg-th-card border-th"
       }`}
     >
       {/* Top row: avatars + info + actions inline on sm+ */}
@@ -568,7 +609,7 @@ function PartyLobbyRow({
           {lobby.players.map((p) => (
             <div
               key={p.id}
-              className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm font-bold text-white ${SKILL_BG[p.skillLevel]}`}
+              className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm font-bold text-white bg-th-primary}`}
             >
               {p.name.charAt(0)}
             </div>
@@ -586,7 +627,7 @@ function PartyLobbyRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-th-heading text-sm">
-              {lobby.players[0]?.name ?? 'Unknown'}'s Party
+              {lobby.players[0]?.name ?? "Unknown"}'s Party
             </span>
             {/* Red badge for pending requests (owner only) */}
             {isUserLobby && pendingRequests.length > 0 && (
@@ -596,8 +637,10 @@ function PartyLobbyRow({
             )}
           </div>
           <div className="text-xs text-th-muted">
-            {lobby.players.length}/4 ·{' '}
-            {isFull ? 'Ready to queue!' : `${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} open`}
+            {lobby.players.length}/4 ·{" "}
+            {isFull
+              ? "Ready to queue!"
+              : `${spotsLeft} spot${spotsLeft !== 1 ? "s" : ""} open`}
           </div>
         </div>
 
@@ -623,19 +666,20 @@ function PartyLobbyRow({
       {isUserLobby && pendingRequests.length > 0 && (
         <div className="mt-3 pt-3 border-t border-th space-y-2">
           <div className="text-xs font-bold text-th-heading">
-            {pendingRequests.length} join request{pendingRequests.length !== 1 ? 's' : ''}
+            {pendingRequests.length} join request
+            {pendingRequests.length !== 1 ? "s" : ""}
           </div>
           {pendingRequests.map((req) => (
             <div key={req.id} className="flex items-center gap-2">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${SKILL_BG[req.player.skillLevel]}`}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-th-primary`}
               >
                 {req.player.name.charAt(0)}
               </div>
               <span className="text-sm font-medium text-th-body flex-1 truncate">
                 {req.player.name}
               </span>
-              <SkillBadge level={req.player.skillLevel} />
+              {/* <SkillBadge level={req.player.skillLevel} /> */}
               <button
                 onClick={() => onApprove(req.id)}
                 className="text-xs font-bold text-green-700 bg-green-100 hover:bg-green-200 px-2.5 py-1 rounded-full transition-colors"
@@ -660,83 +704,79 @@ function PartyLobbyRow({
 
 interface QueuePageProps {
   user: UserState;
-  practice: PracticeState | null
+  practice: PracticeState | null;
   onLogout: () => void;
   onOpenThemes: () => void;
 }
 
-export default function QueuePage({ user, practice, onLogout, onOpenThemes }: QueuePageProps) {
-  const [courts, setCourts] = useState<Court[]>(practice?.courts || []);
-  const [queue, setQueue] = useState<QueueEntry[]>(practice?.queueChips || []);
+export default function QueuePage({
+  user: baseUser,
+  practice,
+  onLogout,
+  onOpenThemes,
+}: QueuePageProps) {
+  const isAdmin = practice?.admins.includes(baseUser.id) ?? false;
+  const user = { ...baseUser, isAdmin };
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [now, setNow] = useState(Date.now());
-  const [userEntryId, setUserEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(new Set());
+  const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
+  const userEntryId =
+    queue.find((e) => e.players.some((p) => p.id === user.id))?.id ?? null;
 
   // tick timers every second
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  //add polling and savestate
 
-  useEffect(()=>{if (!practice)return;
-    async function loadState() {
-      const res = await fetch(`/api/practices/${practice!.code}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setCourts(data.courts);
-      setQueue(data.queueChips);
+  function applyState(state: DashboardState) {
+    setCourts(state.courts);
+    setQueue(state.queue);
+  }
+
+  //update after every change
+  useQueueSocket<DashboardState>(practice?.code, {
+    onState: applyState,
+    onDeleted: () => {
+      window.alert("This practice was ended.");
+      onLogout();
+    },
+  });
+
+  //send updates to the server
+  async function post(path: string, body: unknown) {
+    if (!practice) return;
+    try {
+      const res = await fetch(`/api/practice/${practice.code}/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        window.alert(data?.error ?? "Something went wrong, please try again.");
+        return;
+      }
+      applyState(data as DashboardState);
+    } catch {
+      window.alert("Could not reach the server.");
     }
-    loadState();
-    const id = setInterval(loadState, 3000);
-    return () => clearInterval(id);
-  },[practice]);
-
-   function saveState(newCourts: Court[], newQueue: QueueEntry[]) {
-     if (!practice) return;
-     fetch(`/api/practices/${practice.code}/state`, {
-       method: "PUT",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ courts: newCourts, queueChips: newQueue }),
-     });
-   }
-    // Auto-fill: whenever a court is empty, try to gather exactly 4 players from
-  // the front of the queue. If we can't make a full game yet, leave it empty.
-  useEffect(() => {
-    const hasEmpty = courts.some((c) => c.players.length === 0);
-    if (!hasEmpty || queue.length === 0) return;
-
-    let remainingQueue = [...queue];
-    let changed = false;
-
-    const newCourts = courts.map((court) => {
-      if (court.players.length > 0) return court;
-      const result = tryFillCourt(remainingQueue);
-      if (result === null) return court;
-      changed = true;
-      remainingQueue = remainingQueue.filter((e) => !result.usedIds.has(e.id));
-      return { ...court, players: result.players, startTime: Date.now() };
-    });
-
-    if (!changed) return;
-
-    setCourts(newCourts);
-    setQueue(remainingQueue);
-    saveState(newCourts, remainingQueue);
-
-    if (userEntryId !== null && !remainingQueue.some((e) => e.id === userEntryId)) {
-      setUserEntryId(null);
-    }
-  }, [courts, queue, userEntryId]);
+  }
 
   // back out if auto-fill consumed the entry we're viewing
   useEffect(() => {
-    if (selectedEntryId !== null && !queue.some((e) => e.id === selectedEntryId)) {
+    if (
+      selectedEntryId !== null &&
+      !queue.some((e) => e.id === selectedEntryId)
+    ) {
       setSelectedEntryId(null);
     }
   }, [queue, selectedEntryId]);
@@ -751,54 +791,38 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }, [courts, selectedCourtId]);
 
-  const myCourt = courts.find((c)=> c.players.some((p)=> p.id === user.id));
+  const myCourt = courts.find((c) => c.players.some((p) => p.id === user.id));
   const prevCourtId = useRef<number | null | undefined>(undefined);
 
-  useEffect(()=>{
-    const courtId = myCourt?.id?? null;
-    if(
+  useEffect(() => {
+    const courtId = myCourt?.id ?? null;
+    if (
       prevCourtId.current === null &&
       courtId !== null &&
-      "Notification" in window && 
+      "Notification" in window &&
       Notification.permission === "granted"
-    ){
-      new Notification( "Youre Up! ", {body: `Head to Court ${courtId}`})
+    ) {
+      new Notification("Youre Up! ", { body: `Head to Court ${courtId}` });
     }
-    prevCourtId.current = courtId
-  },[myCourt?.id])
+    prevCourtId.current = courtId;
+  }, [myCourt?.id]);
 
   function handleEndGame(courtId: number) {
-    const newCourts = courts.map((c) =>
-      c.id === courtId ? { ...c, players: [], startTime: null } : c
-    );
-    setCourts(newCourts);
-    saveState(newCourts, queue);
+    const chipId = courts.find((c) => c.id === courtId)?.chipId;
+    if (!chipId) return;
+    void post("game/end", { queueChipId: chipId });
   }
 
   function handleJoinQueue() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
-    const entryId = `user-${user.id}`;
     setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
-    const newQueue = [
-      ...queue,
-      {
-        id: entryId,
-        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1 }],
-        joinedAt: Date.now(),
-      },
-    ];
-    setQueue(newQueue);
-    saveState(courts, newQueue);
-    setUserEntryId(entryId);
+    void post("player/enqueue", { playerId: user.id });
   }
 
   function handleLeaveQueue() {
-    const newQueue = queue.filter((e) => e.id !== userEntryId);
-    setQueue(newQueue);
-    saveState(courts, newQueue);
-    setUserEntryId(null);
+    void post("queue/leave", { playerId: user.id });
   }
 
   function handleCreateParty() {
@@ -808,7 +832,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       ...prev,
       {
         id: lobbyId,
-        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1 }],
+        players: [
+          {
+            id: user.id,
+            name: user.username,
+          },
+        ],
         createdAt: Date.now(),
       },
     ]);
@@ -822,14 +851,19 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       {
         id: requestId,
         lobbyId,
-        player: { id: user.id, name: user.username, skillLevel: user.skillLevel?? 1 },
+        player: {
+          id: user.id,
+          name: user.username,
+        },
         requestedAt: Date.now(),
       },
     ]);
   }
 
   function handleCancelJoinRequest(lobbyId: string) {
-    setJoinRequests((prev) => prev.filter((r) => !(r.lobbyId === lobbyId && r.player.id === user.id)));
+    setJoinRequests((prev) =>
+      prev.filter((r) => !(r.lobbyId === lobbyId && r.player.id === user.id)),
+    );
   }
 
   function handleApproveJoinRequest(requestId: string) {
@@ -839,7 +873,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       prev.map((l) => {
         if (l.id !== req.lobbyId || l.players.length >= 4) return l;
         return { ...l, players: [...l.players, req.player] };
-      })
+      }),
     );
     setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
   }
@@ -859,20 +893,23 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           const remaining = l.players.filter((p) => p.id !== user.id);
           return remaining.length === 0 ? null : { ...l, players: remaining };
         })
-        .filter((l): l is PartyLobby => l !== null)
+        .filter((l): l is PartyLobby => l !== null),
     );
     setUserLobbyId(null);
   }
 
   function handleEnterQueueFromLobby() {
-    const lobby = partyLobbies.find((l) => l.id === userLobbyId);
-    if (lobby === undefined) return;
-    const entryId = `entry-${userLobbyId}`;
-    setQueue((prev) => [...prev, { id: entryId, players: lobby.players, joinedAt: Date.now() }]);
-    setPartyLobbies((prev) => prev.filter((l) => l.id !== userLobbyId));
-    setJoinRequests((prev) => prev.filter((r) => r.lobbyId !== userLobbyId));
-    setUserEntryId(entryId);
-    setUserLobbyId(null);
+    // const lobby = partyLobbies.find((l) => l.id === userLobbyId);
+    // if (lobby === undefined) return;
+    // const entryId = `entry-${userLobbyId}`;
+    // setQueue((prev) => [
+    //   ...prev,
+    //   { id: entryId, players: lobby.players, joinedAt: Date.now() },
+    // ]);
+    // setPartyLobbies((prev) => prev.filter((l) => l.id !== userLobbyId));
+    // setJoinRequests((prev) => prev.filter((r) => r.lobbyId !== userLobbyId));
+    // setUserEntryId(entryId);
+    // setUserLobbyId(null);
   }
 
   function handleMakeAdmin(playerId: string) {
@@ -881,50 +918,47 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   // move user into a different queue entry
   function handleJoinQueueEntry(entryId: string) {
+    // setQueue((prev) => {
+    //   let updated = prev;
 
-    setQueue((prev) => {
-      let updated = prev;
+    //   if (userEntryId !== null) {
+    //     updated = updated
+    //       .map((e): QueueEntry | null => {
+    //         if (e.id !== userEntryId) return e;
+    //         const remaining = e.players.filter((p) => p.id !== user.id);
+    //         return remaining.length === 0 ? null : { ...e, players: remaining };
+    //       })
+    //       .filter((e): e is QueueEntry => e !== null);
+    //   }
 
-      if (userEntryId !== null) {
-        updated = updated
-          .map((e): QueueEntry | null => {
-            if (e.id !== userEntryId) return e;
-            const remaining = e.players.filter((p) => p.id !== user.id);
-            return remaining.length === 0 ? null : { ...e, players: remaining };
-          })
-          .filter((e): e is QueueEntry => e !== null);
-      }
+    //   updated = updated.map((e) => {
+    //     if (e.id !== entryId || e.players.length >= 4) return e;
+    //     return {
+    //       ...e,
+    //       players: [
+    //         ...e.players,
+    //         {
+    //           id: user.id,
+    //           name: user.username,
+    //         },
+    //       ],
+    //     };
+    //   });
 
-      updated = updated.map((e) => {
-        if (e.id !== entryId || e.players.length >= 4) return e;
-        return {
-          ...e,
-          players: [...e.players, { id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1}],
-        };
-      });
+    //   return updated;
+    // });
 
-      return updated;
-    });
-
-    setUserEntryId(entryId);
-    setSelectedEntryId(null);
+    // setUserEntryId(entryId);
+    // setSelectedEntryId(null);
   }
 
   function handleLeaveGroup(entryId: string) {
-    setQueue((prev) =>
-      prev
-        .map((e): QueueEntry | null => {
-          if (e.id !== entryId) return e;
-          const remaining = e.players.filter((p) => p.id !== user.id);
-          return remaining.length === 0 ? null : { ...e, players: remaining };
-        })
-        .filter((e): e is QueueEntry => e !== null)
-    );
-    setUserEntryId(null);
     setSelectedEntryId(null);
+    handleLeaveQueue();
   }
 
-  const userOnCourt = courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
+  const userOnCourt =
+    courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
   const userQueuePosition =
     userEntryId !== null ? queue.findIndex((e) => e.id === userEntryId) + 1 : 0;
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
@@ -939,7 +973,9 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           now={now}
           promotedAdminIds={promotedAdminIds}
           onBack={() => setSelectedCourtId(null)}
-          onEndGame={() => { handleEndGame(selectedCourtId); }}
+          onEndGame={() => {
+            handleEndGame(selectedCourtId);
+          }}
           onMakeAdmin={handleMakeAdmin}
         />
       );
@@ -986,7 +1022,9 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-th-primary-light rounded-lg">
-              <span className="text-xs font-medium text-th-primary-light">Practice</span>
+              <span className="text-xs font-medium text-th-primary-light">
+                Practice
+              </span>
               <span className="font-mono font-bold text-th-primary tracking-widest text-sm">
                 {practice?.code}
               </span>
@@ -1000,14 +1038,16 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
             {/* Skill circle + username on sm+, just skill circle on mobile */}
             <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-th">
-              {user.skillLevel !== null && (
+              {(
                 <span
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${SKILL_BG[user.skillLevel]}`}
-              >
-                {user.skillLevel}
-              </span>
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-th-primary`}
+                >
+                  {/* {user.skillLevel} */}
+                </span>
               )}
-              <span className="text-sm font-medium text-th-body hidden sm:block">{user.username}</span>
+              <span className="text-sm font-medium text-th-body hidden sm:block">
+                {user.username}
+              </span>
             </div>
 
             <button
@@ -1031,19 +1071,24 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Status Banner */}
-        {(userOnCourt !== null || (userEntryId !== null && userQueuePosition > 0)) && (
+        {(userOnCourt !== null ||
+          (userEntryId !== null && userQueuePosition > 0)) && (
           <div
             className={`rounded-2xl p-4 flex items-center gap-3 ${
               userOnCourt !== null
-                ? 'bg-th-primary text-white'
-                : 'bg-yellow-50 border-2 border-yellow-300'
+                ? "bg-th-primary text-white"
+                : "bg-yellow-50 border-2 border-yellow-300"
             }`}
           >
-            <span className="text-2xl sm:text-3xl shrink-0">{userOnCourt !== null ? '🎾' : '⏳'}</span>
+            <span className="text-2xl sm:text-3xl shrink-0">
+              {userOnCourt !== null ? "🎾" : "⏳"}
+            </span>
             <div className="min-w-0">
               {userOnCourt !== null ? (
                 <>
-                  <div className="font-bold text-lg sm:text-xl">You're on Court {userOnCourt.id}!</div>
+                  <div className="font-bold text-lg sm:text-xl">
+                    You're on Court {userOnCourt.id}!
+                  </div>
                   <div className="text-sm opacity-80">Enjoy your game!</div>
                 </>
               ) : (
@@ -1052,7 +1097,11 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                     You're #{userQueuePosition} in the queue
                   </div>
                   <div className="text-yellow-700 text-sm">
-                    Est. wait: ~{Math.ceil(userQueuePosition / Math.max(activeCourtsCount, 1)) * 12} min
+                    Est. wait: ~
+                    {Math.ceil(
+                      userQueuePosition / Math.max(activeCourtsCount, 1),
+                    ) * 12}{" "}
+                    min
                   </div>
                 </>
               )}
@@ -1076,7 +1125,11 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 now={now}
                 isAdmin={user.isAdmin}
                 onEndGame={() => handleEndGame(court.id)}
-                onClick={user.isAdmin && court.players.length > 0 ? () => setSelectedCourtId(court.id) : undefined}
+                onClick={
+                  user.isAdmin && court.players.length > 0
+                    ? () => setSelectedCourtId(court.id)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -1086,24 +1139,32 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
         <section>
           <div className="flex items-start justify-between mb-4 gap-3">
             <div>
-              <h2 className="text-xl font-bold text-th-heading">Party Lobbies</h2>
-              <p className="text-xs text-th-muted mt-0.5">Group up with friends before you join the queue.</p>
+              <h2 className="text-xl font-bold text-th-heading">
+                Party Lobbies
+              </h2>
+              <p className="text-xs text-th-muted mt-0.5">
+                Group up with friends before you join the queue.
+              </p>
             </div>
-            {userEntryId === null && userOnCourt === null && userLobbyId === null && (
-              <button
-                onClick={handleCreateParty}
-                className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors"
-              >
-                🎾 Start a Party
-              </button>
-            )}
+            {userEntryId === null &&
+              userOnCourt === null &&
+              userLobbyId === null && (
+                <button
+                  onClick={handleCreateParty}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors"
+                >
+                  🎾 Start a Party
+                </button>
+              )}
           </div>
 
           {partyLobbies.length === 0 ? (
             <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
               <div className="text-2xl mb-1">🎾</div>
               <div className="font-semibold">No open parties</div>
-              <div className="text-xs mt-0.5">Start one to play with friends.</div>
+              <div className="text-xs mt-0.5">
+                Start one to play with friends.
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1112,9 +1173,17 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                   key={lobby.id}
                   lobby={lobby}
                   isUserLobby={lobby.id === userLobbyId}
-                  canJoin={userEntryId === null && userOnCourt === null && userLobbyId === null}
-                  hasPendingRequest={joinRequests.some((r) => r.lobbyId === lobby.id && r.player.id === user.id)}
-                  pendingRequests={joinRequests.filter((r) => r.lobbyId === lobby.id)}
+                  canJoin={
+                    userEntryId === null &&
+                    userOnCourt === null &&
+                    userLobbyId === null
+                  }
+                  hasPendingRequest={joinRequests.some(
+                    (r) => r.lobbyId === lobby.id && r.player.id === user.id,
+                  )}
+                  pendingRequests={joinRequests.filter(
+                    (r) => r.lobbyId === lobby.id,
+                  )}
                   onRequestJoin={() => handleRequestJoinLobby(lobby.id)}
                   onCancelRequest={() => handleCancelJoinRequest(lobby.id)}
                   onEnterQueue={handleEnterQueueFromLobby}
@@ -1138,14 +1207,16 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
             </div>
 
             <div className="flex gap-2">
-              {userEntryId === null && userOnCourt === null && userLobbyId === null && (
-                <button
-                  onClick={handleJoinQueue}
-                  className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors"
-                >
-                  + Join Solo
-                </button>
-              )}
+              {userEntryId === null &&
+                userOnCourt === null &&
+                userLobbyId === null && (
+                  <button
+                    onClick={handleJoinQueue}
+                    className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                  >
+                    + Join Solo
+                  </button>
+                )}
               {userEntryId !== null && (
                 <button
                   onClick={handleLeaveQueue}
@@ -1165,11 +1236,15 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 className="w-14 h-14 object-cover rounded-full opacity-30 mx-auto mb-3"
               />
               <div className="font-semibold text-lg">Queue is empty</div>
-              <div className="text-sm mt-1">Join the queue to get on a court.</div>
+              <div className="text-sm mt-1">
+                Join the queue to get on a court.
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs text-th-muted mb-3">Tap a group to view or join them.</p>
+              <p className="text-xs text-th-muted mb-3">
+                Tap a group to view or join them.
+              </p>
               {queue.map((entry, index) => (
                 <QueueEntryRow
                   key={entry.id}
