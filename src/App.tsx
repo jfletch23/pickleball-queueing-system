@@ -3,14 +3,17 @@ import LoginPage from '@/pages/LoginPage';
 import QueuePage from '@/pages/QueuePage';
 import ThemePage from '@/pages/ThemePage';
 import { type UserState, type ThemeName, type PracticeState } from '@/types';
+import { saveSession, loadSession, clearSession } from '@/lib/session';
 
 type Page = 'login' | 'queue' | 'themes';
 
+const savedUser = loadSession();
+
 export default function App() {
-  const [page, setPage] = useState<Page>('login');
-  const [user, setUser] = useState<UserState | null>(null);
-  const [practice, setPractice] = useState<PracticeState | null>(null);
+  const [page, setPage] = useState<Page>(savedUser !== null ? 'queue' : 'login');
+  const [user, setUser] = useState<UserState | null>(savedUser);
   const [theme, setTheme] = useState<ThemeName>('forest');
+  const [practice, setPractice] = useState<PracticeState | null>(null);
 
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -21,11 +24,13 @@ export default function App() {
     setPractice(p)
     console.log("Practice is ", p)
     setPage('queue');
+    saveSession(u);
   }
 
   function handleLogout() {
     setUser(null);
     setPage('login');
+    clearSession();
   }
 
   if (page === 'themes') {

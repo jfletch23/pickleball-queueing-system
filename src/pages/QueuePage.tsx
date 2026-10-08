@@ -11,9 +11,7 @@ import {
   type PracticeState,
 } from '../types';
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -27,9 +25,7 @@ const SKILL_BG: Record<SkillLevel, string> = {
   3: 'bg-red-500',
 };
 
-// Returns the dominant skill level for a queue entry.
-// Homogeneous parties return their level directly; mixed parties use
-// whichever level appears most (first player breaks ties).
+// Majority skill level in an entry; ties go to the first player
 function getEntrySkillLevel(entry: QueueEntry): SkillLevel {
   const counts = new Map<SkillLevel, number>();
   for (const p of entry.players) {
@@ -43,10 +39,7 @@ function getEntrySkillLevel(entry: QueueEntry): SkillLevel {
   return best;
 }
 
-// Gather entries from the queue until we have exactly 4 players.
-// Only entries with the same dominant skill level are combined —
-// beginners with beginners, intermediates with intermediates, etc.
-// Tries each distinct skill level in queue order (FIFO within bracket).
+// Fills a court with exactly 4 players of the same skill level, FIFO within bracket
 function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<string> } | null {
   const triedLevels = new Set<SkillLevel>();
 
@@ -65,7 +58,7 @@ function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<st
         usedIds.add(entry.id);
         if (gathered.length === 4) break;
       }
-      // Entry would overflow — skip it, keep looking within this bracket
+      // overflow, skip and keep looking in this bracket
     }
 
     if (gathered.length === 4) return { players: gathered, usedIds };
@@ -74,11 +67,13 @@ function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<st
   return null;
 }
 
+<<<<<<< HEAD
+=======
+// Mock data
+>>>>>>> origin/frontend
 
 
-// ---------------------------------------------------------------------------
 // Shared sub-components
-// ---------------------------------------------------------------------------
 
 function SkillBadge({ level }: { level: SkillLevel }) {
   return (
@@ -91,9 +86,7 @@ function SkillBadge({ level }: { level: SkillLevel }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Court card (display only — admin End button still works)
-// ---------------------------------------------------------------------------
+// Court card, display only (admin End button still works)
 
 function CourtCard({
   court,
@@ -187,9 +180,7 @@ function CourtCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Court admin view (admin taps a court → manage players)
-// ---------------------------------------------------------------------------
+// Court admin view, tap a court to manage its players
 
 function CourtAdminView({
   court,
@@ -272,9 +263,7 @@ function CourtAdminView({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Queue entry detail page
-// ---------------------------------------------------------------------------
 
 function QueueEntryDetailView({
   entry,
@@ -336,12 +325,12 @@ function QueueEntryDetailView({
           <span className="text-3xl">{isFull ? '🎾' : '⏳'}</span>
           <div>
             <div className={`font-bold text-lg ${isFull ? 'text-white' : 'text-th-primary'}`}>
-              {isFull ? 'Group is full — heading to a court!' : 'Waiting for players'}
+              {isFull ? "Group's full, next court is yours" : 'Waiting for players'}
             </div>
             <div className={`text-sm ${isFull ? 'text-white/70' : 'text-th-muted'}`}>
               {isFull
-                ? 'This group will be assigned to the next available court.'
-                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? 's' : ''} to start a game.`}
+                ? "You'll get bumped to the next open court."
+                : `Need ${4 - entry.players.length} more player${4 - entry.players.length !== 1 ? 's' : ''}.`}
             </div>
           </div>
         </div>
@@ -415,7 +404,7 @@ function QueueEntryDetailView({
                   Looking for {4 - entry.players.length} more player{4 - entry.players.length !== 1 ? 's' : ''}!
                 </div>
                 <div className="text-xs text-th-muted mt-0.5">
-                  Tell others your name — they can tap your group in the queue to join your party.
+                  Tell others your name so they can find and join your group.
                 </div>
               </div>
             )}
@@ -447,9 +436,7 @@ function QueueEntryDetailView({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Queue entry row (clickable)
-// ---------------------------------------------------------------------------
 
 function QueueEntryRow({
   entry,
@@ -511,9 +498,7 @@ function QueueEntryRow({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Party lobby row
-// ---------------------------------------------------------------------------
 
 function PartyLobbyRow({
   lobby,
@@ -639,7 +624,7 @@ function PartyLobbyRow({
         <div className="sm:hidden shrink-0">{actions}</div>
       </div>
 
-      {/* Pending join requests — visible to party owner only */}
+      {/* Pending join requests, visible to the party owner only */}
       {isUserLobby && pendingRequests.length > 0 && (
         <div className="mt-3 pt-3 border-t border-th space-y-2">
           <div className="text-xs font-bold text-th-heading">
@@ -676,9 +661,7 @@ function PartyLobbyRow({
   );
 }
 
-// ---------------------------------------------------------------------------
 // Main component
-// ---------------------------------------------------------------------------
 
 interface QueuePageProps {
   user: UserState;
@@ -699,14 +682,13 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
 
-  // Tick every second for timers
+  // tick timers every second
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Auto-fill: whenever a court is empty, try to gather exactly 4 players from
-  // the front of the queue. If we can't make a full game yet, leave it empty.
+  // auto-fill empty courts from the queue
   useEffect(() => {
     const hasEmpty = courts.some((c) => c.players.length === 0);
     if (!hasEmpty || queue.length === 0) return;
@@ -733,14 +715,14 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }, [courts, queue, userEntryId]);
 
-  // If the selected entry was consumed by auto-fill, go back to queue view
+  // back out if auto-fill consumed the entry we're viewing
   useEffect(() => {
     if (selectedEntryId !== null && !queue.some((e) => e.id === selectedEntryId)) {
       setSelectedEntryId(null);
     }
   }, [queue, selectedEntryId]);
 
-  // If the admin ends a game while viewing that court, return to main view
+  // back out if the court emptied while we're viewing it
   useEffect(() => {
     if (selectedCourtId !== null) {
       const court = courts.find((c) => c.id === selectedCourtId);
@@ -771,7 +753,15 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   }
 
   function handleLeaveQueue() {
-    setQueue((prev) => prev.filter((e) => e.id !== userEntryId));
+    setQueue((prev) =>
+      prev
+        .map((e): QueueEntry | null => {
+          if (e.id !== userEntryId) return e;
+          const remaining = e.players.filter((p) => p.id !== user.id);
+          return remaining.length === 0 ? null : { ...e, players: remaining };
+        })
+        .filter((e): e is QueueEntry => e !== null)
+    );
     setUserEntryId(null);
   }
 
@@ -824,7 +814,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   function handleLeavePartyLobby() {
     if (userLobbyId === null) return;
-    // Cancel all requests for the lobby (they'll be re-opened if lobby continues)
+    // clear pending requests for this lobby
     setJoinRequests((prev) => prev.filter((r) => r.lobbyId !== userLobbyId));
     setPartyLobbies((prev) =>
       prev
@@ -853,12 +843,11 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setPromotedAdminIds((prev) => new Set([...prev, playerId]));
   }
 
-  // Join a specific queue entry's group (replaces user's current queue entry)
+  // move user into a different queue entry
   function handleJoinQueueEntry(entryId: string) {
     setQueue((prev) => {
       let updated = prev;
 
-      // Remove user from their current entry (delete entry if it becomes empty)
       if (userEntryId !== null) {
         updated = updated
           .map((e): QueueEntry | null => {
@@ -869,7 +858,6 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           .filter((e): e is QueueEntry => e !== null);
       }
 
-      // Add user to the target entry
       updated = updated.map((e) => {
         if (e.id !== entryId || e.players.length >= 4) return e;
         return {
@@ -885,7 +873,6 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setSelectedEntryId(null);
   }
 
-  // Leave the current group (removes user from that entry)
   function handleLeaveGroup(entryId: string) {
     setQueue((prev) =>
       prev
@@ -905,7 +892,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     userEntryId !== null ? queue.findIndex((e) => e.id === userEntryId) + 1 : 0;
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
-  // ── Court admin view ─────────────────────────────────────────────────────
+  // Court admin view
   if (selectedCourtId !== null && user.isAdmin) {
     const selectedCourt = courts.find((c) => c.id === selectedCourtId);
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
@@ -922,7 +909,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }
 
-  // ── Queue entry detail view ──────────────────────────────────────────────
+  // Queue entry detail view
   if (selectedEntryId !== null) {
     const selectedEntry = queue.find((e) => e.id === selectedEntryId);
     if (selectedEntry !== undefined) {
@@ -943,7 +930,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }
 
-  // ── Main queue view ──────────────────────────────────────────────────────
+  // Main queue view
   return (
     <div className="min-h-screen bg-th-page">
       {/* Header */}
@@ -1063,7 +1050,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           <div className="flex items-start justify-between mb-4 gap-3">
             <div>
               <h2 className="text-xl font-bold text-th-heading">Party Lobbies</h2>
-              <p className="text-xs text-th-muted mt-0.5">Assemble your group before entering the queue.</p>
+              <p className="text-xs text-th-muted mt-0.5">Group up with friends before you join the queue.</p>
             </div>
             {userEntryId === null && userOnCourt === null && userLobbyId === null && (
               <button
@@ -1079,7 +1066,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
             <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
               <div className="text-2xl mb-1">🎾</div>
               <div className="font-semibold">No open parties</div>
-              <div className="text-xs mt-0.5">Start one to play with friends!</div>
+              <div className="text-xs mt-0.5">Start one to play with friends.</div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1141,7 +1128,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 className="w-14 h-14 object-cover rounded-full opacity-30 mx-auto mb-3"
               />
               <div className="font-semibold text-lg">Queue is empty</div>
-              <div className="text-sm mt-1">Join the queue to get on a court!</div>
+              <div className="text-sm mt-1">Join the queue to get on a court.</div>
             </div>
           ) : (
             <div className="space-y-2">

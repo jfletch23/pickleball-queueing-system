@@ -18,85 +18,17 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
     e.preventDefault();
     let user : UserState
     let practice : PracticeState
-    
-    if (mode === "join") {
-      const response = await fetch(`/api/practices/${practiceCode}/players`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({username: username, password: password})
-      })
-      //Account exists but user entered wrong password
-      if (response.status === 401) {
-        window.alert("Wrong password!")
-        return
-      }
-      //Account exists and user entered correct password
-      else if (response.status == 203) {
-        const player_response = await response.json()
-        console.log(player_response)
-        user = {
-          id: player_response.player_id,
-          username: username,
-          password: password,
-          skillLevel: player_response.skillLevel,
-          isAdmin: false
-        }
-      }
-      //Account does not exist, it has been created
-      else {
-        const player_response = await response.json()
-        user = {
-          id: player_response.player_id,
-          username: username,
-          password: password,
-          skillLevel: null,
-          isAdmin: false
-        }
-      }
-      const practice_response = await fetch(`/api/practices/${practiceCode}`)
-      if (practice_response.status === 404) {
-        alert("Practice not found!")
-        return
-      } else {
-        const practice_json = await practice_response.json()
-        practice = {
-          code: practiceCode,
-          admins: practice_json.admins,
-          courts: practice_json.courts,
-          numCourts: practice_json.courtsNum,
-          party: practice_json.parties,
-          queueChips: practice_json.queueChips
-        }
-      }
-      //Else block means mode is create so fetch a different endpoint
-    } else {
-      const response = await fetch("/api/practices", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({username: username, password: password, skillLevel: null, numCourts: numCourts})
-      })
-      const practice_response = await response.json()
-      
-      user = {
-        id: practice_response.admins[0],
-        username: username,
-        password: password,
-        skillLevel: null,
-        isAdmin: true,
-      }
-
-      practice = {
-        code: practice_response.code,
-        admins: [user],
-        courts: [],
-        numCourts: numCourts,
-        party: [],
-        queueChips: []
-      }
+    //TODO: make this work
+    user = {
+      id: "fakeid",
+      username: "fakeusername",
+      password: "fakepassword"
+    }
+    practice = {
+      code: "ABC123",
+      players: [user],
+      admins: [user.id],
+      numCourts: 4
     }
     console.log(user)
     console.log(practice)
@@ -232,13 +164,13 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
 
             <p className="text-center text-xs text-th-muted">
               {mode === 'join' && 'Get the 6-character session code from your admin.'}
-              {mode === 'create' && "As admin, you'll control courts and advance the queue."}
+              {mode === 'create' && "You'll be admin, you can manage courts and advance the queue."}
             </p>
           </form>
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--th-login-sub)' }}>
-          Session data is cleared at the end of each practice
+          Data resets after each practice
         </p>
       </div>
     </div>

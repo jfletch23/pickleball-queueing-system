@@ -23,7 +23,7 @@ export default function ThemePage({ current, onSelect, onBack }: ThemePageProps)
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <p className="text-th-muted mb-6">Choose a look for your session.</p>
+        <p className="text-th-muted mb-6">Pick a theme.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {(Object.keys(THEMES) as ThemeName[]).map((key) => {

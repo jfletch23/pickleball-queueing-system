@@ -60,22 +60,22 @@ export interface ThemeInfo {
 export const THEMES: Record<ThemeName, ThemeInfo> = {
   forest: {
     name: 'Forest',
-    description: 'Classic green — the color of the court',
+    description: 'Green, like the court',
     swatches: ['#15803d', '#16a34a', '#84cc16', '#f9fafb'],
   },
   dark: {
     name: 'Dark',
-    description: 'Easy on the eyes at night',
+    description: 'For practices that run late',
     swatches: ['#111827', '#1f2937', '#22c55e', '#374151'],
   },
   ocean: {
     name: 'Ocean',
-    description: 'Cool blue vibes',
+    description: 'Blue, kinda chill',
     swatches: ['#1e3a8a', '#2563eb', '#7dd3fc', '#eff6ff'],
   },
   sunset: {
     name: 'Sunset',
-    description: 'Warm orange energy',
+    description: 'Orange and warm',
     swatches: ['#9a3412', '#ea580c', '#fb923c', '#fff7ed'],
   },
 };
