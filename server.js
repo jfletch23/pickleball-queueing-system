@@ -13,9 +13,13 @@ app.use(express.json());
 
 const practices = db.collection("practices");
 const queueChips = db.collection("queue_chips");
+const parties = db.collection("parties");
+const MAX_PARTY_SIZE = 4;
 
 //Makes it so practice code is basically a primary key sorted by ascending order
 await practices.createIndex({ code: 1 }, { unique: true });
+//A player can only be in one party per practice (also blocks double-click duplicates)
+await parties.createIndex({ practiceCode: 1, players: 1 }, { unique: true });
 
 function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -88,7 +92,8 @@ const deletePractice = async (req, res) => {
   try {
     const [practiceResult, chipsResult] = await Promise.all([
       practices.deleteOne({code : req.params.code}),
-      queueChips.deleteMany({practiceCode : req.params.code})
+      queueChips.deleteMany({practiceCode : req.params.code}),
+      parties.deleteMany({practiceCode: req.params.code})
     ])
     if (practiceResult.acknowledged != true || chipsResult.acknowledged != true) {
       res.status(500).json({error : "Error connecting to MongoDB"})
@@ -293,9 +298,48 @@ const endGame = async (req, res) => {
     res.status(500).json({error : err})
   }
 }
+//TODO: party logic
+//create party
+const createParty = async (req, res)=>{
+  const code = req.params.code
+  const playerId = new ObjectId(req.body.playerId)
+  if(!playerId ){
+    res.status(400).json({error:"playerid not valid"})
+    return
+  }
+  try {
+    const existing = await parties.findOne({
+      practiceCode: code,
+      players: playerId,
+    });
+    if (existing) {
+      res.status(400).json({ error: "Player is alreay in this party" });
+      return;
+    }
+    await parties.insertOne({
+      practiceCode: code,
+      leaderId: playerId,
+      players: [playerId],
+      requests: [],
+      createdAt: new Date(),
+    });
+
+    const partyList = await parties.find({ practiceCode: code }).toArray();
+    res.status(200).json({ parties: partyList });
+  } catch (err) {
+    if (err.code === 11000) {
+      res.status(400).json({ error: "Player is already in a party" });
+      return;
+    }
+    res.status(500).json({ error: err });
+  }
+}
+//leave party
+//send and get invites
+//accept invite
 
 app.post("/api/create/practice", createPractice)
-
+app.post("/api/practice/:code/party/create", createParty)
 //Custom middleware to check given practice code exists in the database, 
 //Need to define it in the .get or .delete or .post because that way it can get the URL parameter for the practice code
 app.get("/api/practice/:code", checkPracticeExists, getPractice)
@@ -305,11 +349,5 @@ app.post("/api/practice/:code/player/enqueue", checkPracticeExists, enqueuePlaye
 app.get("/api/practice/:code/state", checkPracticeExists, getState)
 app.post("/api/practice/:code/queue/ready", checkPracticeExists, readyQueueChip)
 app.post("/api/practice/:code/game/end", checkPracticeExists, endGame)
-
-//TODO: party logic
-//create party
-//leave party
-//send and get invites
-//accept invite
 
 app.listen(3001, () => console.log("Server running on http://localhost:3001"));
