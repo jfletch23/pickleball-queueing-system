@@ -1,6 +1,5 @@
 import express from "express";
 import { MongoClient, ObjectId} from "mongodb";
-import { error } from "node:console";
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
@@ -365,8 +364,8 @@ const createParty = async (req, res)=>{
     res.status(500).json({ error: err.message });
   }
 }
-//leave party
-//send part request
+
+//send party request
 const requestJoinParty = async (req, res)=>{
   const code = req.params.code
   const playerId = new ObjectId(req.body.playerId)
@@ -401,11 +400,105 @@ const requestJoinParty = async (req, res)=>{
     
   }
 }
-//receive party request
+
+const cancelJoinRequest = async (req, res)=>{
+  const code = req.params.code
+  if (!ObjectId.isValid(req.body.playerId)) {
+    res.status(400).json({error: "not a valid player"})
+    return
+  }
+  const playerId = new ObjectId(req.body.playerId)
+  try {
+    await parties.updateOne({_id: req.party._id}, {$pull: {requests: {playerId: playerId}}})
+    const partyList = await getPartiesState(code)
+    res.status(200).json({parties: partyList})
+  } catch (err) {
+    res.status(500).json({error : err.message})
+  }
+
+}
+
 //accept invite
+const respondToJoinRequest = async (req, res)=>{
+const code = req.params.code
+const leaderId = new ObjectId(req.body.leaderId)
+const playerId = new ObjectId(req.body.playedId)
+const accept = req.body.accept === true
+if (!leaderId || !playedId) {
+  
+}
+if (!req.party.leaderId.equals(leaderId)) {
+  res.status(403).json({error: "Only the part leader can accept request"})
+  return
+}
+
+try {
+  if(!accept){
+    await parties.updateOne({_id: req.party._id}, {$pull: {requests: {playerId: playerId}}})
+    const partyList = await getPartiesState(code)
+    res.status(200).json({parties: partyList})
+    return
+  }
+  //One atomic update: only works if the request exists and the party still has room
+    const updated = await parties.findOneAndUpdate(
+      {
+        _id: req.party._id,
+        "requests.playerId": playerId,
+        $expr: {$lt: [{$size: "$players"}, MAX_PARTY_SIZE]}
+      },
+      {
+        $push: {players: playerId},
+        $pull: {requests: {playerId: playerId}}
+      },
+      {returnDocument: "after"}
+      
+    )
+    if (!updated) {
+      res.status(400).json({error : "Request not found or party is full"})
+      return
+    }
+    //Player is in a party now, so drop their requests to every other party
+    await parties.updateMany({practiceCode: code}, {$pull: {requests: {playerId: playerId}}})
+    const partyList = await getPartiesState(code)
+    res.status(200).json({parties: partyList})
+} catch (err) {
+  if (err.code === 11000) {
+      res.status(400).json({error : "Player already joined another party"})
+      return
+    }
+    res.status(500).json({error : err})
+  }
+}
+
+//leave party
+const leaveParty = async (req, res)=>{
+  const code = req.params.code
+  const playerId = new ObjectId(req.body.playerId)
+  if(!playerId || !req.party.players.some((id) => id.equals(playerId))){
+    res.status(400).json({error : "Player is not in this party"})
+    return
+  }
+    const remaining = req.party.players.filter((id) => !id.equals(playerId))
+    try {
+      if(remaining.length === 0){
+        await parties.deleteOne({_id: req.party._id})
+      }else{
+        const newLeaderId = req.party.leaderId.equals(playerId)? remaining[0]: req.party.leaderId
+        await parties.updateOne({_id: req.party._id}, {$pull: {players: playerId}, $set: {leaderId: newLeaderId}})
+      }
+      const partyList = await getPartiesState(code)
+      res.status(200).json({parties: partyList})
+    } catch (err) {
+      res.status(500).json({error : err.message})
+    }
+}
+
+
 app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
 app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, checkPartyExists, requestJoinParty)
-
+app.post("/api/practice/:code/party/:partyId/request/cancel", checkPracticeExists, checkPartyExists, cancelJoinRequest)
+app.post("/api/practice/:code/party/:partyId/request/respond", checkPracticeExists, checkPartyExists, respondToJoinRequest)
+app.post("/api/practice/:code/party/:partyId/leave", checkPracticeExists, checkPartyExists, leaveParty)
 app.post("/api/create/practice", createPractice)
 app.post("/api/practice/:code/party/create", createParty)
 
