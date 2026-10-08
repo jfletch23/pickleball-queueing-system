@@ -257,6 +257,7 @@ const readyQueueChip = async (req, res) => {
   const courtNumber = req.body.courtNumber
   if (courtNumber > req.practice.numCourts) {
     res.status(400).json({error : "Invalid court number entered"})
+    return
   }
   try {
     const update = await queueChips.updateOne({practiceCode: code, _id: new ObjectId(queueChipId)}, 
@@ -266,6 +267,7 @@ const readyQueueChip = async (req, res) => {
     
     if (update.modifiedCount === 0) {
       res.status(500).json({error : "Failed to update queue status to playing"})
+      return
     }
     //Respond with updated state of dashboard (queue chips and courts)
     const newState = await getDashboardState(req.practice, code)
@@ -303,7 +305,7 @@ const endGame = async (req, res) => {
       res.status(400).json({error : "Failed to update queue chip to completed status"})
     }
     //DESIGN CHOICE: only readies queue chips with 4 players, which means there could theoretically be no queue chips left to be readied but that is ok because that could also happen if no one is in the queue. Just going to result in an empty court
-    const ready_chip = await queueChips.findOneAndUpdate({practiceCode: code, status: QUEUE_STATUS.WAITING, $expr: { $eq: [{$size: "$players"}, 4]}}, {$set: {status: QUEUE_STATUS.PLAYING, courtNumber: courtNumber, playingStartTime : new Date()}}, {sort: {createdAt: 1}, returnDocument: "after"})
+    const ready_chip = await queueChips.findOneAndUpdate({practiceCode: code, status: QUEUE_STATUS.WAITING, $expr: { $eq: [{$size: "$players"}, 4]}}, {$set: {status: QUEUE_STATUS.PLAYING, courtNumber: courtNumber, playingStartTime : Date.now()}}, {sort: {createdAt: 1}, returnDocument: "after"})
     const new_state = await getDashboardState(req.practice, code)
     res.status(200).json(new_state)
   } catch (err) {
