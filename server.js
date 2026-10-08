@@ -24,7 +24,7 @@ function makeCode() {
 function makeCourts(n) {
   //Create an array of length n that contains ObjectIds
   return Array.from({ length: n }, (_, i) => ({
-    courtId: new ObjectId(),
+    id: i + 1,
     players: [],
     //Will update startTime when practice starts
     startTime: null,
