@@ -32,7 +32,9 @@ export interface Player {
 
 //Maybe no longer needed?
 export interface Court {
-  courtNum: number;
+  //Same id as queueChip id but is basically a specific type of queueChip with the status of playing
+  _id: string;
+  courtNumber: number;
   players: UserState[];
   //Date.now() returns a number
   playingStartTime: number;

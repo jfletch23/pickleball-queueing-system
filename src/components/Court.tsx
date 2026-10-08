@@ -39,7 +39,7 @@ export function CourtCard({
         }`}
       >
         <span className={`font-bold text-sm shrink-0 ${isActive ? 'text-white' : 'text-gray-500'}`}>
-          Court {court.courtNum}
+          Court {court.courtNumber}
         </span>
         {isActive ? (
           <div className="flex items-center gap-2 min-w-0">
@@ -130,7 +130,7 @@ export function CourtAdminView({
             ← Courts
           </button>
           <div className="flex-1">
-            <h1 className="font-bold text-th-heading text-lg">Court {court.courtNum}</h1>
+            <h1 className="font-bold text-th-heading text-lg">Court {court.courtNumber}</h1>
             <p className="text-xs text-th-muted">⏱ {formatTime(elapsed)} · {court.players.length}/4 players</p>
           </div>
           <button

@@ -28,7 +28,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const [userEntryId, setUserEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(new Set());
-  const [selectedCourtId, setSelectedCourtId] = useState<number | null>(null);
+  const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(null);
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
@@ -119,8 +119,21 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setUserLobbyId(null);
   }
 
-  function handleEndGame(input : number) {
-
+  async function handleEndGame(courtNumber : number, courtId: string) {
+    try {
+      const response = await fetch(`/api/practice/${practice?.code}/game/end`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({queueChipId: courtId})
+      })
+      const new_state = await response.json()
+      setCourts(new_state.courts)
+      setQueue(new_state.queue)
+    } catch (err) {
+      console.log(err)
+    }
   }
 
   function handleMakeAdmin() {
@@ -153,16 +166,16 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
-  if (selectedCourtId !== null && user.isAdmin) {
-    const selectedCourt = courts.find((c) => c.courtNum === selectedCourtId);
+  if (selectedCourtNumber !== null && user.isAdmin) {
+    const selectedCourt = courts.find((c) => c.courtNumber === selectedCourtNumber);
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
       return (
         <CourtAdminView
           court={selectedCourt}
           now={now}
           promotedAdminIds={promotedAdminIds}
-          onBack={() => setSelectedCourtId(null)}
-          onEndGame={() => { handleEndGame(selectedCourtId); }}
+          onBack={() => setSelectedCourtNumber(null)}
+          onEndGame={() => { handleEndGame(3, "hello world"); }}
           onMakeAdmin={handleMakeAdmin}
         />
       );
@@ -259,7 +272,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
             <div className="min-w-0">
               {userOnCourt !== null ? (
                 <>
-                  <div className="font-bold text-lg sm:text-xl">You're on Court {userOnCourt.courtNum}!</div>
+                  <div className="font-bold text-lg sm:text-xl">You're on Court {userOnCourt.courtNumber}!</div>
                   <div className="text-sm opacity-80">Enjoy your game!</div>
                 </>
               ) : (
@@ -287,12 +300,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {courts.map((court) => (
               <CourtCard
-                key={court.courtNum}
+                key={court.courtNumber}
                 court={court}
                 now={now}
                 isAdmin={user.isAdmin}
-                onEndGame={() => handleEndGame(court.courtNum)}
-                onClick={user.isAdmin && court.players.length > 0 ? () => setSelectedCourtId(court.courtNum) : undefined}
+                onEndGame={() => handleEndGame(court.courtNumber, court._id)}
+                onClick={user.isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
               />
             ))}
           </div>
