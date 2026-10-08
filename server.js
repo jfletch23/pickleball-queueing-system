@@ -1,5 +1,7 @@
 import express from "express";
 import { MongoClient, ObjectId} from "mongodb";
+import http from "http";
+import { WebSocketServer } from "ws";
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
@@ -98,6 +100,7 @@ const deletePractice = async (req, res) => {
       res.status(400).json({error : "Error practice not deleted"})
       return
     }
+    broadcast(req.params.code, { type: "practice_deleted" })
     res.status(200).json({practiceResult : practiceResult, chipsResult: chipsResult})
   } catch (err) {
     res.status(500).json({error : err})
@@ -217,16 +220,10 @@ const enqueuePlayer = async (req, res) => {
       const result = await queueChips.insertOne(queueChip)
       queueChip._id = result.insertedId
       //Get updated state to respond with
-      const newState = await getDashboardState(code)
-      res.status(200).json(newState)
-      return
     }
-    else {
-      //Get updated state to respond with
-      const newState = await getDashboardState(code)
-      res.status(200).json(newState)
-      return
-    }    
+    const newState = await getDashboardState(code)
+    broadcast(code, { type: "state", state: newState })
+    res.status(200).json(newState)
   } catch (err) {
     res.status(500).json({error : err})
     return
@@ -240,6 +237,7 @@ const readyQueueChip = async (req, res) => {
   const courtNumber = req.body.courtNumber
   if (courtNumber > req.practice.numCourts) {
     res.status(400).json({error : "Invalid court number entered"})
+    return
   }
   try {
     const update = await queueChips.updateOne({practiceCode: code, _id: new ObjectId(queueChipId)}, 
@@ -249,9 +247,11 @@ const readyQueueChip = async (req, res) => {
     
     if (update.modifiedCount === 0) {
       res.status(500).json({error : "Failed to update queue status to playing"})
+      return
     }
     //Respond with updated state of dashboard (queue chips and courts)
     const newState = await getDashboardState(code)
+    broadcast(code, { type: "state", state: newState })
     res.status(200).json(newState)
   } catch (err) {
     res.status(500).json({error : err})
@@ -284,10 +284,12 @@ const endGame = async (req, res) => {
     const update_court = await queueChips.updateOne({practiceCode: code, _id: new ObjectId(queueChipId)}, {$set: {status: QUEUE_STATUS.COMPLETED, courtNumber: null, playingStartTime: null}})
     if (update_court.modifiedCount === 0) {
       res.status(400).json({error : "Failed to update queue chip to completed status"})
+      return
     }
     //DESIGN CHOICE: only readies queue chips with 4 players, which means there could theoretically be no queue chips left to be readied but that is ok because that could also happen if no one is in the queue. Just going to result in an empty court
     const ready_chip = await queueChips.findOneAndUpdate({practiceCode: code, status: QUEUE_STATUS.WAITING, $expr: { $eq: [{$size: "$players"}, 4]}}, {$set: {status: QUEUE_STATUS.PLAYING, courtNumber: courtNumber, playingStartTime : new Date()}}, {sort: {createdAt: 1}, returnDocument: "after"})
     const new_state = await getDashboardState(code)
+    broadcast(code, { type: "state", state: new_state })
     res.status(200).json(new_state)
   } catch (err) {
     res.status(500).json({error : err})
@@ -312,4 +314,61 @@ app.post("/api/practice/:code/game/end", checkPracticeExists, endGame)
 //send and get invites
 //accept invite
 
-app.listen(3001, () => console.log("Server running on http://localhost:3001"));
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: "/ws" });
+const rooms = new Map();
+
+function leaveRoom(socket) {
+  const room = rooms.get(socket.practiceCode);
+  if (!room) return;
+  room.delete(socket);
+  if (room.size === 0) rooms.delete(socket.practiceCode);
+}
+
+function broadcast(code, payload) {
+  const msg = JSON.stringify(payload);
+  rooms.get(code)?.forEach((s) => s.readyState === 1 && s.send(msg));
+}
+
+wss.on("connection", (socket) => {
+  socket.isAlive = true;
+  socket.on("pong", () => (socket.isAlive = true));
+  console.log("ws connection established");
+
+  socket.on("message", async (raw) => {
+    let msg;
+    try { msg = JSON.parse(raw.toString()); } catch { return; }
+
+    if (msg.type === "join" && typeof msg.code === "string") {
+      try {
+        const exists = await practices.findOne({ code: msg.code }, { projection: { _id: 1 } });
+        if (!exists) {
+          socket.send(JSON.stringify({ type: "error", error: "Practice not found" }));
+          return;
+        }
+        leaveRoom(socket);
+        socket.practiceCode = msg.code;
+        if (!rooms.has(msg.code)) rooms.set(msg.code, new Set());
+        rooms.get(msg.code).add(socket);
+        // send current state right away (this also resyncs after a reconnect)
+        const state = await getDashboardState(msg.code);
+        socket.send(JSON.stringify({ type: "state", state }));
+      } catch (err) {
+        console.error("ws join failed", err);
+      }
+    }
+  });
+
+  socket.on("close", () => leaveRoom(socket));
+});
+
+setInterval(() => {
+  wss.clients.forEach((s) => {
+    if (!s.isAlive) return s.terminate();
+    s.isAlive = false;
+    s.ping();
+  });
+}, 30000);
+
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
