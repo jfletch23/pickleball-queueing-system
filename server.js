@@ -1,5 +1,6 @@
 import express from "express";
 import { MongoClient, ObjectId} from "mongodb";
+import { error } from "node:console";
 
 const client = new MongoClient(process.env.MONGODB_URI);
 await client.connect();
@@ -298,7 +299,37 @@ const endGame = async (req, res) => {
     res.status(500).json({error : err})
   }
 }
-//TODO: party logic
+const getPartiesState = async (practiceCode) => {
+  return await parties.find({practiceCode: practiceCode}).sort({createdAt: 1}).toArray()
+}
+const checkPartyExists = async (req, res, next)=>{
+  const partyId = new ObjectId(req.params.partyId)
+  if(!partyId){
+    res.status(400).json({error: "invalid party"})
+    return
+  }
+  try{
+    const party = await parties.findOne({_id: partyId, practiceCode: req.params.code})
+    if(!party){
+      res.status(404).json({error: "party not found"})
+      return
+    }
+    req.party = party
+    next()
+  } catch(err){
+    res.status(500).json({error : err.message})
+
+  }
+
+}
+const getParties = async (req, res) => {
+  try {
+    const partyList = await getPartiesState(req.params.code)
+    res.status(200).json({parties: partyList})
+  } catch (err) {
+    res.status(500).json({error : err.message})
+  }
+}
 //create party
 const createParty = async (req, res)=>{
   const code = req.params.code
@@ -331,15 +362,17 @@ const createParty = async (req, res)=>{
       res.status(400).json({ error: "Player is already in a party" });
       return;
     }
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message });
   }
 }
 //leave party
 //send and get invites
 //accept invite
+app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
 
 app.post("/api/create/practice", createPractice)
 app.post("/api/practice/:code/party/create", createParty)
+
 //Custom middleware to check given practice code exists in the database, 
 //Need to define it in the .get or .delete or .post because that way it can get the URL parameter for the practice code
 app.get("/api/practice/:code", checkPracticeExists, getPractice)
