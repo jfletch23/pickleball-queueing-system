@@ -421,10 +421,14 @@ const cancelJoinRequest = async (req, res)=>{
 //accept invite
 const respondToJoinRequest = async (req, res)=>{
 const code = req.params.code
+if (!ObjectId.isValid(req.body.leaderId) || !ObjectId.isValid(req.body.playerId)) {
+  res.status(400).json({error: "Valid leaderId and playerId are required"})
+  return
+}
 const leaderId = new ObjectId(req.body.leaderId)
-const playerId = new ObjectId(req.body.playedId)
+const playerId = new ObjectId(req.body.playerId)
 const accept = req.body.accept === true
-if (!leaderId || !playedId) {
+if (!leaderId || !playerId) {
   
 }
 if (!req.party.leaderId.equals(leaderId)) {
@@ -466,7 +470,7 @@ try {
       res.status(400).json({error : "Player already joined another party"})
       return
     }
-    res.status(500).json({error : err})
+    res.status(500).json({error : err.message})
   }
 }
 
@@ -492,7 +496,45 @@ const leaveParty = async (req, res)=>{
       res.status(500).json({error : err.message})
     }
 }
+const enqueueParty = async(req, res)=>{
+  const code = req.params.code
 
+  if (!ObjectId.isValid(req.body.leaderId)) {
+    res.status(400).json({ error: "not a valid id" })
+    return
+  }
+  const leaderId = new ObjectId(req.body.leaderId)
+   if (!req.party.leaderId.equals(leaderId)) {
+    res.status(403).json({error : "Only the party leader can put the party in the queue"})
+    return
+  }
+  const partyPlayers = req.party.players
+  try {
+    const updateChip = await queueChips.findOneAndUpdate({
+        practiceCode: code,
+        status: QUEUE_STATUS.WAITING,
+        $expr: {$lte: [{$size: "$players"}, MAX_PARTY_SIZE - partyPlayers.length]}
+      },
+      {$push: {players: {$each: partyPlayers}}},
+      {sort: {createdAt: 1}, returnDocument: "after"})
+      // chip without room create new chip
+      if(!updateChip){
+        await queueChips.insertOne({
+          practiceCode: code,
+        players: partyPlayers,
+        status: QUEUE_STATUS.WAITING,
+        createdAt: new Date(),
+        courtNumber: null,
+        playingStartTime: null
+        })
+      }
+      await parties.deleteOne({_id: req.party._id})
+          const [dashboard, partyList] = await Promise.all([getDashboardState(code), getPartiesState(code)])
+          res.status(200).json({...dashboard,parties: partyList})
+  } catch (err) {
+        res.status(500).json({error : err.message})
+  }
+}
 
 app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
 app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, checkPartyExists, requestJoinParty)
@@ -500,7 +542,9 @@ app.post("/api/practice/:code/party/:partyId/request/cancel", checkPracticeExist
 app.post("/api/practice/:code/party/:partyId/request/respond", checkPracticeExists, checkPartyExists, respondToJoinRequest)
 app.post("/api/practice/:code/party/:partyId/leave", checkPracticeExists, checkPartyExists, leaveParty)
 app.post("/api/create/practice", createPractice)
-app.post("/api/practice/:code/party/create", createParty)
+app.post("/api/practice/:code/party/create", checkPracticeExists, createParty)
+app.post("/api/practice/:code/party/:partyId/enqueue", checkPracticeExists, checkPartyExists, enqueueParty)
+
 
 //Custom middleware to check given practice code exists in the database, 
 //Need to define it in the .get or .delete or .post because that way it can get the URL parameter for the practice code
