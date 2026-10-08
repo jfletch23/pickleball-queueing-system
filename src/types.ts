@@ -2,6 +2,7 @@ export interface UserState {
   id: string;
   username: string;
   password: string;
+  isAdmin: boolean;
 }
 
 export interface PracticeState {
@@ -31,9 +32,10 @@ export interface Player {
 
 //Maybe no longer needed?
 export interface Court {
-  id: number;
+  courtNum: number;
   players: UserState[];
-  startTime: number | null;
+  //Date.now() returns a number
+  playingStartTime: number;
 }
 
 export interface PartyLobby {

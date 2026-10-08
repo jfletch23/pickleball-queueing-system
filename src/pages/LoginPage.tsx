@@ -28,6 +28,8 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
         const practice = await create_practice.json()
         //Only will be 1 player in the practice players array since just created the practice
         const user = practice.players[0]
+        //User who just created the practice will always be an admin
+        user.isAdmin = true
         onEnter(user, practice)
       }
       else {
@@ -50,6 +52,8 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       //Creating a new user
       else if (join_practice.status === 200) {
         const {result, user} = await join_practice.json()
+        //Just creating a new user and they are not the practice session owner so therefore they cannot be an admin right off the bat (maybe will be appointed later if we add that as a feature)
+        user.isAdmin = false
         onEnter(user, result);
       }
       //Logging in as a pre-existing user
