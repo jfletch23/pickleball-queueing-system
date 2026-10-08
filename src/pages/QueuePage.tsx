@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   type SkillLevel,
   type Court,
@@ -67,10 +67,7 @@ function tryFillCourt(queue: QueueEntry[]): { players: Player[]; usedIds: Set<st
   return null;
 }
 
-<<<<<<< HEAD
-=======
 // Mock data
->>>>>>> origin/frontend
 
 
 // Shared sub-components
@@ -687,8 +684,31 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+  //add polling and savestate
 
-  // auto-fill empty courts from the queue
+  useEffect(()=>{if (!practice)return;
+    async function loadState() {
+      const res = await fetch(`/api/practices/${practice!.code}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setCourts(data.courts);
+      setQueue(data.queueChips);
+    }
+    loadState();
+    const id = setInterval(loadState, 3000);
+    return () => clearInterval(id);
+  },[practice]);
+
+   function saveState(newCourts: Court[], newQueue: QueueEntry[]) {
+     if (!practice) return;
+     fetch(`/api/practices/${practice.code}/state`, {
+       method: "PUT",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ courts: newCourts, queueChips: newQueue }),
+     });
+   }
+    // Auto-fill: whenever a court is empty, try to gather exactly 4 players from
+  // the front of the queue. If we can't make a full game yet, leave it empty.
   useEffect(() => {
     const hasEmpty = courts.some((c) => c.players.length === 0);
     if (!hasEmpty || queue.length === 0) return;
@@ -709,6 +729,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
     setCourts(newCourts);
     setQueue(remainingQueue);
+    saveState(newCourts, remainingQueue);
 
     if (userEntryId !== null && !remainingQueue.some((e) => e.id === userEntryId)) {
       setUserEntryId(null);
@@ -732,36 +753,53 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     }
   }, [courts, selectedCourtId]);
 
+  const myCourt = courts.find((c)=> c.players.some((p)=> p.id === user.id));
+  const prevCourtId = useRef<number | null | undefined>(undefined);
+
+  useEffect(()=>{
+    const courtId = myCourt?.id?? null;
+    if(
+      prevCourtId.current === null &&
+      courtId !== null &&
+      "Notification" in window && 
+      Notification.permission === "granted"
+    ){
+      new Notification( "Youre Up! ", {body: `Head to Court ${courtId}`})
+    }
+    prevCourtId.current = courtId
+  },[myCourt?.id])
+
   function handleEndGame(courtId: number) {
-    setCourts((prev) =>
-      prev.map((c) => (c.id === courtId ? { ...c, players: [], startTime: null } : c))
+    const newCourts = courts.map((c) =>
+      c.id === courtId ? { ...c, players: [], startTime: null } : c
     );
+    setCourts(newCourts);
+    saveState(newCourts, queue);
   }
 
   function handleJoinQueue() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     const entryId = `user-${user.id}`;
     setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
-    setQueue((prev) => [
-      ...prev,
+    const newQueue = [
+      ...queue,
       {
         id: entryId,
-        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel }],
+        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1 }],
         joinedAt: Date.now(),
       },
-    ]);
+    ];
+    setQueue(newQueue);
+    saveState(courts, newQueue);
     setUserEntryId(entryId);
   }
 
   function handleLeaveQueue() {
-    setQueue((prev) =>
-      prev
-        .map((e): QueueEntry | null => {
-          if (e.id !== userEntryId) return e;
-          const remaining = e.players.filter((p) => p.id !== user.id);
-          return remaining.length === 0 ? null : { ...e, players: remaining };
-        })
-        .filter((e): e is QueueEntry => e !== null)
-    );
+    const newQueue = queue.filter((e) => e.id !== userEntryId);
+    setQueue(newQueue);
+    saveState(courts, newQueue);
     setUserEntryId(null);
   }
 
@@ -772,7 +810,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       ...prev,
       {
         id: lobbyId,
-        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel }],
+        players: [{ id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1 }],
         createdAt: Date.now(),
       },
     ]);
@@ -786,7 +824,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       {
         id: requestId,
         lobbyId,
-        player: { id: user.id, name: user.username, skillLevel: user.skillLevel },
+        player: { id: user.id, name: user.username, skillLevel: user.skillLevel?? 1 },
         requestedAt: Date.now(),
       },
     ]);
@@ -845,6 +883,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   // move user into a different queue entry
   function handleJoinQueueEntry(entryId: string) {
+
     setQueue((prev) => {
       let updated = prev;
 
@@ -862,7 +901,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
         if (e.id !== entryId || e.players.length >= 4) return e;
         return {
           ...e,
-          players: [...e.players, { id: user.id, name: user.username, skillLevel: user.skillLevel }],
+          players: [...e.players, { id: user.id, name: user.username, skillLevel: user.skillLevel ?? 1}],
         };
       });
 
