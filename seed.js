@@ -1,4 +1,4 @@
-const PRACTICE_CODE = '6E664B';
+const PRACTICE_CODE = 'JC67H7';
 const BASE_URL = `http://localhost:3001/api/practice/${PRACTICE_CODE}`;
 const NUM_PLAYERS = 25;
 
@@ -43,7 +43,7 @@ async function seedData() {
     // STEP 2: Enqueue all 25 players
     // ---------------------------------------------------------
     console.log(`[Step 2] Enqueuing ${NUM_PLAYERS} players...`);
-    const queueChipIds = [];
+    const queueChipIdsSet = new Set();
 
     for (let i = 0; i < playerIds.length; i++) {
       const playerId = playerIds[i];
@@ -57,12 +57,19 @@ async function seedData() {
       if (!response.ok) throw new Error(`Enqueue failed for playerId ${playerId}: ${response.statusText}`);
       
       const data = await response.json();
-      const queueChipId = data.queue._id; 
-      
-      queueChipIds.push(queueChipId);
-      console.log(`   ✅ Enqueued player ${i + 1} -> Queue Chip ID: ${queueChipId}`);
+      // data.queue is an array of chips. If chips exist, grab the latest created chip's _id
+      if (Array.isArray(data.queue) && data.queue.length > 0) {
+        const latestChip = data.queue[data.queue.length - 1];
+        if (latestChip && latestChip._id) {
+          queueChipIdsSet.add(latestChip._id);
+        }
+      }
+      console.log(`   ✅ Enqueued player ${i + 1}/${NUM_PLAYERS}`);
+
     }
-    console.log(`\n🎉 Successfully collected ${queueChipIds.length} queue chip IDs.\n`);
+    // Convert Set of unique chip IDs to an array
+    const queueChipIds = Array.from(queueChipIdsSet);
+    console.log(`\n🎉 Successfully collected ${queueChipIds.length} complete queue chip IDs.\n`);
 
     // ---------------------------------------------------------
     // STEP 3: Ready up 4 courts
@@ -80,7 +87,7 @@ async function seedData() {
       });
 
       if (!response.ok) {
-        throw new Error(`Ready up failed for Court ${courtNumber}: ${response.statusText}`);
+        throw new Error(`Ready up failed for Court ${courtNumber}: ${response.statusText} and ${response.status}`);
       }
 
       console.log(`   🎾 Assigned Queue Chip ${queueChipId} to Court ${courtNumber}`);
