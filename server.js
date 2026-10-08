@@ -21,16 +21,6 @@ function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-function makeCourts(n) {
-  //Create an array of length n that contains ObjectIds
-  return Array.from({ length: n }, (_, i) => ({
-    id: i + 1,
-    players: [],
-    //Will update startTime when practice starts
-    startTime: null,
-  }));
-}
-
 //Basically defining an ENUM in Javascript
 export const QUEUE_STATUS = Object.freeze({
   WAITING: 'waiting',
@@ -58,8 +48,6 @@ const createPractice = async (req, res) => {
     admins: [user.id],
     code: makeCode(),
     numCourts: numCourts,
-    courts: makeCourts(numCourts),
-    parties: []
   }
   try {
     const result = await practices.insertOne(practice)

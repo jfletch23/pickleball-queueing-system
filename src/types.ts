@@ -9,8 +9,8 @@ export interface PracticeState {
   players: UserState[];
   admins: string[];
   numCourts: number;
-  party: UserState[];
 }
+
 //Come back to this, may need to make modifications (maybe remove rank key, add courtNum, and playingStartTime key??)
 export interface QueueChip {
   id: string;
