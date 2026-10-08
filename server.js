@@ -366,9 +366,45 @@ const createParty = async (req, res)=>{
   }
 }
 //leave party
-//send and get invites
+//send part request
+const requestJoinParty = async (req, res)=>{
+  const code = req.params.code
+  const playerId = new ObjectId(req.body.playerId)
+  
+  if(!playerId){
+    res.status(400).json({error: "not a valid player"})
+    return
+  }
+  try {
+    const existing = await parties.findOne({practiceCode: code, players: playerId})
+    if(existing){
+      res.status(400).json({error: " already in a part leave to request "})
+      return
+    }
+    
+
+    const result = await parties.updateOne(
+      {
+        _id: req.party._id,
+        "requests.playerId": {$ne: playerId},
+        $expr: {$lt: [{$size: "$players"}, MAX_PARTY_SIZE]}
+      },
+      {$push: {requests: {playerId: playerId, requestedAt: new Date()}}}
+    )
+    if (result.matchedCount === 0) {
+      res.status(400).json({error : "Party is full or request was already sent"})
+      return
+    }
+    const partyList = await getPartiesState(code)
+    res.status(200).json({parties: partyList})
+  } catch (err) {
+    
+  }
+}
+//receive party request
 //accept invite
 app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
+app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, checkPartyExists, requestJoinParty)
 
 app.post("/api/create/practice", createPractice)
 app.post("/api/practice/:code/party/create", createParty)
