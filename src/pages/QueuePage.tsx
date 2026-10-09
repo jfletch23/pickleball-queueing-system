@@ -32,7 +32,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
-  const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?.id ?? null;
+  const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
 
   function applyState(state: DashboardState) {
     setCourts(state.courts);
@@ -179,7 +179,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const userOnCourt =
     courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
   const userQueuePosition =
-    userEntryId !== null ? queue.findIndex((e) => e.id === userEntryId) + 1 : 0;
+    userEntryId !== null ? queue.findIndex((e) => e._id === userEntryId) + 1 : 0;
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
@@ -203,7 +203,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   // Queue entry detail view
   if (selectedEntryId !== null) {
-    const selectedEntry = queue.find((e) => e.id === selectedEntryId);
+    const selectedEntry = queue.find((e) => e._id === selectedEntryId);
     if (selectedEntry !== undefined) {
       const position = queue.indexOf(selectedEntry) + 1;
       return (
@@ -451,11 +451,11 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
               </p>
               {queue.map((entry, index) => (
                 <QueueEntryRow
-                  key={entry.id}
+                  key={entry._id}
                   entry={entry}
                   position={index + 1}
-                  isUser={entry.id === userEntryId}
-                  onClick={() => setSelectedEntryId(entry.id)}
+                  isUser={entry._id === userEntryId}
+                  onClick={() => {setSelectedEntryId(entry._id), console.log("You clicked on ", entry._id)}}
                 />
               ))}
             </div>

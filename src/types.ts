@@ -14,7 +14,7 @@ export interface PracticeState {
 
 //Come back to this, may need to make modifications (maybe remove rank key, add courtNum, and playingStartTime key??)
 export interface QueueChip {
-  id: string;
+  _id: string;
   practiceCode: string;
   players: UserState[];
   status: string;
