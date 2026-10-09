@@ -61,7 +61,7 @@ export function QueueEntryDetailView({
             isFull ? 'bg-th-primary' : 'bg-th-primary-light'
           }`}
         >
-          <span className="text-3xl">{isFull ? '🎾' : '⏳'}</span>
+          <span className="text-3xl">{isFull ? '🏓' : '⏳'}</span>
           <div>
             <div className={`font-bold text-lg ${isFull ? 'text-white' : 'text-th-primary'}`}>
               {isFull ? "Group's full, next court is yours" : 'Waiting for players'}

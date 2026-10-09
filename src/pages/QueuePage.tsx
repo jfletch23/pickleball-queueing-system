@@ -353,7 +353,7 @@ export default function QueuePage({
             }`}
           >
             <span className="text-2xl sm:text-3xl shrink-0">
-              {userOnCourt !== null ? "🎾" : "⏳"}
+              {userOnCourt !== null ? "🏓" : "⏳"}
             </span>
             <div className="min-w-0">
               {userOnCourt !== null ? (
