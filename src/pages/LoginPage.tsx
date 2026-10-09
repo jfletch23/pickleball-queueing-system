@@ -59,7 +59,9 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       }
       //Logging in as a pre-existing user
       else if (join_practice.status === 201) {
-        const {success, practice, user} = await join_practice.json()
+        const output = await join_practice.json()
+        const practice = output.practice
+        const user = output.user
         onEnter(user, practice)
       }
       else if (join_practice.status === 404) {

@@ -3,7 +3,6 @@ import {
   type Court,
   type QueueChip,
   type PartyLobby,
-  type PartyJoinRequest,
   type UserState,
   type PracticeState,
   type DashboardState,
@@ -44,8 +43,6 @@ export default function QueuePage({
   );
 
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
-  //const [userCurrentPartyLobbyId, setUserCurrentPartyLobbyId] = useState<string | null>(null);
-  const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
 
   const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
 
