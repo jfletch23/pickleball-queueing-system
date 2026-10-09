@@ -33,7 +33,7 @@ async function fillEmptyCourts(code, numCourts) {
     if (taken.has(n)) continue
     const chip = await queueChips.findOneAndUpdate(
       { practiceCode: code, status: QUEUE_STATUS.WAITING, $expr: { $eq: [{ $size: "$players" }, 4] } },
-      { $set: { status: QUEUE_STATUS.PLAYING, courtNumber: n, playingStartTime: new Date() } },
+      { $set: { status: QUEUE_STATUS.PLAYING, courtNumber: n, playingStartTime: Date.now() } },
       { sort: { createdAt: 1 } }
     )
     if (!chip) break
