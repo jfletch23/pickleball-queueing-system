@@ -6,6 +6,7 @@ export function QueueEntryDetailView({
   entry,
   position,
   user,
+  isAdmin,
   userOnCourt,
   promotedAdminIds,
   onBack,
@@ -16,6 +17,7 @@ export function QueueEntryDetailView({
   entry: QueueChip;
   position: number;
   user: UserState;
+  isAdmin: Boolean;
   userOnCourt: Court | null;
   promotedAdminIds: Set<string>;
   onBack: () => void;
@@ -34,7 +36,7 @@ export function QueueEntryDetailView({
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-3">
           <button
             onClick={onBack}
-            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg"
+            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg cursor-pointer"
           >
             ← Queue
           </button>
@@ -84,7 +86,7 @@ export function QueueEntryDetailView({
                   className="bg-th-card rounded-2xl p-4 flex flex-col items-center text-center border border-th"
                 >
                   <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2`}
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white bg-th-primary mb-2"
                   >
                     {player.username.charAt(0)}
                   </div>
@@ -99,10 +101,10 @@ export function QueueEntryDetailView({
                       Admin
                     </span>
                   )}
-                  {user.isAdmin && player.id !== user.id && !isPromotedAdmin && (
+                  {isAdmin && player.id !== user.id && !isPromotedAdmin && (
                     <button
                       onClick={() => onMakeAdmin(player.id)}
-                      className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
+                      className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                     >
                       Make Admin
                     </button>
@@ -151,7 +153,7 @@ export function QueueEntryDetailView({
           </div>
         ) : userOnCourt !== null ? (
           <div className="text-center py-3 text-th-muted font-medium">
-            You're currently playing on Court {userOnCourt.courtNum}.
+            You're currently playing on Court {userOnCourt.courtNumber}.
           </div>
         ) : hasOpenSlot ? (
           <button
@@ -183,7 +185,6 @@ export function QueueEntryRow({
   isUser: boolean;
   onClick: () => void;
 }) {
-  const isParty = entry.players.length > 1;
   const spotsLeft = 4 - entry.players.length;
 
   return (
@@ -211,11 +212,6 @@ export function QueueEntryRow({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {isParty && (
-          <span className="text-xs font-semibold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-            Party
-          </span>
-        )}
         {spotsLeft > 0 && (
           <span className="text-xs font-semibold text-th-primary bg-th-primary-light px-2.5 py-0.5 rounded-full">
             +{spotsLeft}

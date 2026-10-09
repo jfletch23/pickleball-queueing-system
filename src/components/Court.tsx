@@ -39,7 +39,7 @@ export function CourtCard({
         }`}
       >
         <span className={`font-bold text-sm shrink-0 ${isActive ? 'text-white' : 'text-gray-500'}`}>
-          Court {court.courtNum}
+          Court {court.courtNumber}
         </span>
         {isActive ? (
           <div className="flex items-center gap-2 min-w-0">
@@ -125,17 +125,17 @@ export function CourtAdminView({
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-3">
           <button
             onClick={onBack}
-            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg"
+            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg cursor-pointer"
           >
             ← Courts
           </button>
           <div className="flex-1">
-            <h1 className="font-bold text-th-heading text-lg">Court {court.courtNum}</h1>
+            <h1 className="font-bold text-th-heading text-lg">Court {court.courtNumber}</h1>
             <p className="text-xs text-th-muted">⏱ {formatTime(elapsed)} · {court.players.length}/4 players</p>
           </div>
           <button
             onClick={onEndGame}
-            className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+            className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer"
           >
             End Game
           </button>
@@ -153,7 +153,7 @@ export function CourtAdminView({
                 className="bg-th-card rounded-2xl p-4 flex flex-col items-center text-center border border-th"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2`}
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white bg-th-primary mb-2"
                 >
                   {player.username.charAt(0)}
                 </div>
@@ -165,7 +165,7 @@ export function CourtAdminView({
                 ) : (
                   <button
                     onClick={() => onMakeAdmin(player.id)}
-                    className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
+                    className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                   >
                     Make Admin
                   </button>

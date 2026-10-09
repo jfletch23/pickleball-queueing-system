@@ -46,6 +46,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       })
       if (join_practice.status === 400) {
         window.alert("Wrong password entered! If you are trying to create an account, this username already exists.")
+        setPassword('')
       } else if (join_practice.status === 500) {
         window.alert("Server error")
       }
@@ -60,6 +61,10 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       else if (join_practice.status === 201) {
         const {success, practice, user} = await join_practice.json()
         onEnter(user, practice)
+      }
+      else if (join_practice.status === 404) {
+        window.alert("Invalid practice code")
+        setPracticeCode('')
       }
     }    
   }
@@ -100,7 +105,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
                   mode === tab ? 'tab-th-active' : 'border-transparent text-th-muted hover:text-th-heading'
                 }`}
               >
-                {tab === 'join' ? 'Join Session' : 'Create Session'}
+                {tab === 'join' ? 'Join Practice' : 'Create Practice'}
               </button>
             ))}
           </div>
@@ -141,10 +146,10 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
               </p>
             )}
 
-            {/* Session Code */}
+            {/* Practice Code */}
             {mode === 'join' && (
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-th-heading">Session Code</label>
+                <label className="block text-sm font-medium text-th-heading">Practice Code</label>
                 <input
                   type="text"
                   value={practiceCode}
@@ -187,12 +192,12 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
               type="submit"
               className="bg-th-primary w-full py-3.5 rounded-xl text-base font-bold shadow-lg transition-colors"
             >
-              {mode === 'join' && 'Join Session →'}
-              {mode === 'create' && 'Create Session →'}
+              {mode === 'join' && 'Join Practice →'}
+              {mode === 'create' && 'Create Practice →'}
             </button>
 
             <p className="text-center text-xs text-th-muted">
-              {mode === 'join' && 'Get the 6-character session code from your admin.'}
+              {mode === 'join' && 'Get the 6-character practice code from your admin.'}
               {mode === 'create' && "You'll be admin, you can manage courts and advance the queue."}
             </p>
           </form>

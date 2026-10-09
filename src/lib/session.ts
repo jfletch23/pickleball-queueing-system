@@ -12,7 +12,10 @@ export function loadSession(): UserState | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]*)`));
   if (match === null) return null;
   try {
-    return JSON.parse(decodeURIComponent(match[1])) as UserState;
+    const parsed = JSON.parse(decodeURIComponent(match[1]));
+    // guard against a stale/corrupted cookie shape from an older version of the app
+    if (typeof parsed?.id !== 'string' || typeof parsed?.username !== 'string') return null;
+    return parsed as UserState;
   } catch {
     return null;
   }
