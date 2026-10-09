@@ -35,9 +35,6 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?.id ?? null;
 
   function applyState(state: DashboardState) {
-    console.log("State change detected!")
-    console.log(state.courts)
-    console.log(state.queue)
     setCourts(state.courts);
     setQueue(state.queue);
   }
