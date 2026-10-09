@@ -340,7 +340,7 @@ export default function QueuePage({
               </span>
             </div>
 
-            {user.isAdmin && (
+            {isAdmin && (
               <button
                 onClick={handleDeletePractice}
                 className="text-sm font-medium text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 transition-colors px-2 sm:px-3 py-1.5 rounded-lg cursor-pointer"
