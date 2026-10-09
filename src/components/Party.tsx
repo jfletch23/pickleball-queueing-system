@@ -75,7 +75,7 @@ export function PartyLobbyRow({
           {lobby.players.map((p) => (
             <div
               key={p.id}
-              className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm font-bold text-white`}
+              className="w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm font-bold text-white bg-th-primary"
             >
               {p.name.charAt(0)}
             </div>
@@ -135,7 +135,7 @@ export function PartyLobbyRow({
           {pendingRequests.map((req) => (
             <div key={req.id} className="flex items-center gap-2">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0`}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white bg-th-primary shrink-0"
               >
                 {req.player.name.charAt(0)}
               </div>

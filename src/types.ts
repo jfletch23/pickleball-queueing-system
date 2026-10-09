@@ -1,7 +1,8 @@
 export interface UserState {
   id: string;
   username: string;
-  password: string;
+  // not present once restored from the session cookie, only used during login
+  password?: string;
   isAdmin: boolean;
 }
 
