@@ -765,7 +765,9 @@ const enqueueParty = async(req, res)=>{
         })
       }
       await parties.deleteOne({_id: req.party._id})
-      const [dashboard, partyState] = await Promise.all([getDashboardState(req.practice, code), getPartiesState(req.practice, code)])
+      const [state, partyState] = await Promise.all([getDashboardState(req.practice, code), getPartiesState(req.practice, code)])
+      broadcast(code, { type: "state", state });
+      broadcast(code, {type: "party", partyState})
       res.status(200).json({...dashboard, partyState: partyState})
   } catch (err) {
         res.status(500).json({error : err.message})
