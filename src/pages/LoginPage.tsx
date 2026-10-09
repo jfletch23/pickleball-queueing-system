@@ -46,6 +46,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       })
       if (join_practice.status === 400) {
         window.alert("Wrong password entered! If you are trying to create an account, this username already exists.")
+        setPassword('')
       } else if (join_practice.status === 500) {
         window.alert("Server error")
       }
@@ -60,6 +61,10 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       else if (join_practice.status === 201) {
         const {success, practice, user} = await join_practice.json()
         onEnter(user, practice)
+      }
+      else if (join_practice.status === 404) {
+        window.alert("Invalid practice code")
+        setPracticeCode('')
       }
     }    
   }
