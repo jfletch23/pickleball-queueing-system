@@ -775,7 +775,7 @@ app.post("/api/create/practice", createPractice);
 //Custom middleware to check given practice code exists in the database,
 //Need to define it in the .get or .delete or .post because that way it can get the URL parameter for the practice code
 app.get("/api/practice/:code", checkPracticeExists, getPractice);
-app.delete("/api/practice/:code/delete", checkPracticeExists, deletePractice);
+app.post("/api/practice/:code/delete", checkPracticeExists, deletePractice);
 app.post("/api/practice/:code/join", checkPracticeExists, joinPractice);
 app.post(
   "/api/practice/:code/player/enqueue",
