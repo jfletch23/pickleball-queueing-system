@@ -148,7 +148,10 @@ const joinPractice = async (req, res) => {
     else {
       if (player.password === password) {
         const existing_user = await practices.findOne({"code" : code, "players.username" : username, "players.password": password}, {projection: {_id: 0, "players.$" : 1}})
-        res.status(201).json({success : "Successfully logged in", practice: practice, user: existing_user.players[0]})
+        const isAdmin = practice.admins.some((item) => (item.toString() === existing_user.players[0].id.toString()))
+        const complete_user = existing_user.players[0]
+        complete_user.isAdmin = isAdmin
+        res.status(201).json({success : "Successfully logged in", practice: practice, user: complete_user})
         return
       }
       else {
@@ -163,10 +166,24 @@ const joinPractice = async (req, res) => {
   }
 }
 
-const getDashboardState = async (practiceCode) => {
+const getDashboardState = async (practice, practiceCode) => {
   const chips = await queueChips.find({practiceCode: practiceCode, status: {$in: [QUEUE_STATUS.WAITING, QUEUE_STATUS.PLAYING]}}).sort({createdAt: 1}).toArray()
-  const queue = chips.filter((item) => item.status === QUEUE_STATUS.WAITING)
-  const courts = chips.filter((item) => item.status === QUEUE_STATUS.PLAYING)
+  const playerMap = new Map(practice.players.map((player) => [player.id.toString(), player]))
+
+  const hydratedChips = chips.map((chip) => ({
+    ...chip,
+    players: (chip.players).map((playerId) => {
+      const foundPlayer = playerMap.get(playerId.toString())
+      if (!foundPlayer) {
+        return {id: playerId, username: "Unknown player"}
+      }
+      const {password, ...otherData} = foundPlayer;
+      return otherData
+    })
+  }))
+  
+  const queue = hydratedChips.filter((item) => item.status === QUEUE_STATUS.WAITING)
+  const courts = hydratedChips.filter((item) => item.status === QUEUE_STATUS.PLAYING)
   return {queue: queue, courts: courts}
 }
 
@@ -222,13 +239,13 @@ const enqueuePlayer = async (req, res) => {
       const result = await queueChips.insertOne(queueChip)
       queueChip._id = result.insertedId
       //Get updated state to respond with
-      const newState = await getDashboardState(code)
+      const newState = await getDashboardState(req.practice, code)
       res.status(200).json(newState)
       return
     }
     else {
       //Get updated state to respond with
-      const newState = await getDashboardState(code)
+      const newState = await getDashboardState(req.practice, code)
       res.status(200).json(newState)
       return
     }    
@@ -250,13 +267,13 @@ const readyQueueChip = async (req, res) => {
     const update = await queueChips.updateOne({practiceCode: code, _id: new ObjectId(queueChipId)}, 
       {$set: {status: QUEUE_STATUS.PLAYING, 
               courtNumber: courtNumber, 
-              playingStartTime: new Date()}})
+              playingStartTime: Date.now()}})
     
     if (update.modifiedCount === 0) {
       res.status(500).json({error : "Failed to update queue status to playing"})
     }
     //Respond with updated state of dashboard (queue chips and courts)
-    const newState = await getDashboardState(code)
+    const newState = await getDashboardState(req.practice, code)
     res.status(200).json(newState)
   } catch (err) {
     res.status(500).json({error : err})
@@ -268,7 +285,7 @@ const readyQueueChip = async (req, res) => {
 const getState = async (req, res) => {
   const code = req.params.code
   try {
-    const state = await getDashboardState(code)
+    const state = await getDashboardState(req.practice, code)
     res.status(200).json(state)
   } catch (err) {
     res.status(500).json({error : err})
@@ -292,7 +309,7 @@ const endGame = async (req, res) => {
     }
     //DESIGN CHOICE: only readies queue chips with 4 players, which means there could theoretically be no queue chips left to be readied but that is ok because that could also happen if no one is in the queue. Just going to result in an empty court
     const ready_chip = await queueChips.findOneAndUpdate({practiceCode: code, status: QUEUE_STATUS.WAITING, $expr: { $eq: [{$size: "$players"}, 4]}}, {$set: {status: QUEUE_STATUS.PLAYING, courtNumber: courtNumber, playingStartTime : new Date()}}, {sort: {createdAt: 1}, returnDocument: "after"})
-    const new_state = await getDashboardState(code)
+    const new_state = await getDashboardState(req.practice, code)
     res.status(200).json(new_state)
   } catch (err) {
     res.status(500).json({error : err})
@@ -541,6 +558,18 @@ app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, chec
 app.post("/api/practice/:code/party/:partyId/request/cancel", checkPracticeExists, checkPartyExists, cancelJoinRequest)
 app.post("/api/practice/:code/party/:partyId/request/respond", checkPracticeExists, checkPartyExists, respondToJoinRequest)
 app.post("/api/practice/:code/party/:partyId/leave", checkPracticeExists, checkPartyExists, leaveParty)
+//Mostly just making this endpoint for testing purposes, not sure when it will be implemented on the client (if at all)
+const appointAdmin = async (req, res) => {
+  const code = req.params.code
+  const playerId = req.body.playerId
+  try {
+    const appoint = await practices.updateOne({code: code}, {$push: {admins: new ObjectId(playerId)}})
+    res.status(200).json({output : appoint})
+  } catch (err) {
+    res.status(500).json({error : err})
+  }
+}
+
 app.post("/api/create/practice", createPractice)
 app.post("/api/practice/:code/party/create", checkPracticeExists, createParty)
 app.post("/api/practice/:code/party/:partyId/enqueue", checkPracticeExists, checkPartyExists, enqueueParty)
@@ -555,5 +584,6 @@ app.post("/api/practice/:code/player/enqueue", checkPracticeExists, enqueuePlaye
 app.get("/api/practice/:code/state", checkPracticeExists, getState)
 app.post("/api/practice/:code/queue/ready", checkPracticeExists, readyQueueChip)
 app.post("/api/practice/:code/game/end", checkPracticeExists, endGame)
+app.post("/api/practice/:code/player/appointadmin", checkPracticeExists, appointAdmin)
 
 app.listen(3001, () => console.log("Server running on http://localhost:3001"));
