@@ -33,10 +33,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
   const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
+  const isAdmin = promotedAdminIds.has(user.id)
 
   function applyState(state: DashboardState) {
     setCourts(state.courts);
     setQueue(state.queue);
+    setPromotedAdminIds(new Set(state.admins))
   }
 
   //update after every change
@@ -153,20 +155,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   }
 
   async function handleMakeAdmin(playerId : string) {
-    //Cant use void post because it triggers a state change which is unnecessary since courts and queues not changing
-    //TODO: incorporate user into state so websocket triggers an update when a player is appointed as an admin so one their side the nav bar updates with the admin tag
-    const response = await fetch(`/api/practice/${practice?.code}/player/appointadmin`, {
-      method: "POST",
-      headers: {
-        "Content-Type":"application/json"
-      },
-      body: JSON.stringify({playerId: playerId})
-    })
-    setPromotedAdminIds((prevSet) => {
-      const newSet = new Set(prevSet)
-      newSet.add(playerId)
-      return newSet
-    })
+    void post("player/appointadmin", {playerId: playerId})
   }
 
   function handleJoinQueueChip() {
@@ -198,7 +187,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
-  if (selectedCourtNumber !== null && user.isAdmin) {
+  if (selectedCourtNumber !== null && isAdmin) {
     const selectedCourt = courts.find((c) => c.courtNumber === selectedCourtNumber);
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
       return (
@@ -226,6 +215,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           entry={selectedEntry}
           position={position}
           user={user}
+          isAdmin={isAdmin}
           userOnCourt={userOnCourt}
           promotedAdminIds={promotedAdminIds}
           onBack={() => setSelectedEntryId(null)}
@@ -264,7 +254,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
               </span>
             </div>
 
-            {user.isAdmin && (
+            {isAdmin && (
               <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded-full">
                 Admin
               </span>
@@ -346,9 +336,9 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 key={court.courtNumber}
                 court={court}
                 now={now}
-                isAdmin={user.isAdmin}
+                isAdmin={isAdmin}
                 onEndGame={() => handleEndGame(court._id, court.courtNumber)}
-                onClick={user.isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
+                onClick={isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
               />
             ))}
           </div>

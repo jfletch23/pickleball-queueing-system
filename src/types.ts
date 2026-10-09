@@ -47,6 +47,7 @@ export interface QueueEntry {
 export interface DashboardState {
   queue: QueueChip[];
   courts: Court[];
+  admins: string[];
 }
 
 export interface PartyLobby {

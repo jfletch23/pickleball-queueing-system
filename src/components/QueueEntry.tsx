@@ -6,6 +6,7 @@ export function QueueEntryDetailView({
   entry,
   position,
   user,
+  isAdmin,
   userOnCourt,
   promotedAdminIds,
   onBack,
@@ -16,6 +17,7 @@ export function QueueEntryDetailView({
   entry: QueueChip;
   position: number;
   user: UserState;
+  isAdmin: Boolean;
   userOnCourt: Court | null;
   promotedAdminIds: Set<string>;
   onBack: () => void;
@@ -99,7 +101,7 @@ export function QueueEntryDetailView({
                       Admin
                     </span>
                   )}
-                  {user.isAdmin && player.id !== user.id && !isPromotedAdmin && (
+                  {isAdmin && player.id !== user.id && !isPromotedAdmin && (
                     <button
                       onClick={() => onMakeAdmin(player.id)}
                       className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
@@ -151,7 +153,7 @@ export function QueueEntryDetailView({
           </div>
         ) : userOnCourt !== null ? (
           <div className="text-center py-3 text-th-muted font-medium">
-            You're currently playing on Court {userOnCourt.courtNum}.
+            You're currently playing on Court {userOnCourt.courtNumber}.
           </div>
         ) : hasOpenSlot ? (
           <button
