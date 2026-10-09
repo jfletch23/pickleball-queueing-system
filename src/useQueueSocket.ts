@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-type Handlers<T> = { onState: (state: T) => void; onDeleted?: () => void };
+type Handlers<T> = { onState: (state: T) => void; onPartyState: (state: T) => void; onDeleted?: () => void };
 
 export function useQueueSocket<T>(code: string | undefined, handlers: Handlers<T>) {
   const handlersRef = useRef(handlers);
@@ -19,12 +19,20 @@ export function useQueueSocket<T>(code: string | undefined, handlers: Handlers<T
 
       ws.onopen = () => {
         retry = 0;
-        ws!.send(JSON.stringify({ type: "join", code }));
+        ws!.send(JSON.stringify({ type: "join", code}));
+        ws!.send(JSON.stringify({type: "party", code}))
       };
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === "state") handlersRef.current.onState(msg.state);
-        else if (msg.type === "practice_deleted") handlersRef.current.onDeleted?.();
+        if (msg.type === "state") {
+          handlersRef.current.onState(msg.state)
+        }
+        else if (msg.type === "party") {
+          handlersRef.current.onPartyState(msg.partyState)
+        }
+        else if (msg.type === "practice_deleted") {
+          handlersRef.current.onDeleted?.()
+        }
       };
       ws.onclose = () => {
         if (stopped) return;

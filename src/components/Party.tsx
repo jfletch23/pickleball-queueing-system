@@ -5,6 +5,7 @@ import { type PartyLobby, type PartyJoinRequest } from "../types";
 export function PartyLobbyRow({
   lobby,
   isUserLobby,
+  isPartyLeader,
   canJoin,
   hasPendingRequest,
   pendingRequests,
@@ -17,51 +18,57 @@ export function PartyLobbyRow({
 }: {
   lobby: PartyLobby;
   isUserLobby: boolean;
+  isPartyLeader: boolean;
   canJoin: boolean;
   hasPendingRequest: boolean;
   pendingRequests: PartyJoinRequest[];
   onRequestJoin: () => void;
   onCancelRequest: () => void;
-  onEnterQueue: () => void;
-  onLeave: () => void;
-  onApprove: (requestId: string) => void;
-  onDeny: (requestId: string) => void;
+  onEnterQueue: (lobbyid: string) => void;
+  onLeave: (lobbyid : string) => void;
+  onApprove: (partyId: string, requesteeId: string) => void;
+  onDeny: (partyId: string, requesteeId: string) => void;
 }) {
   const spotsLeft = 4 - lobby.players.length;
   const isFull = spotsLeft === 0;
 
   const actions = isUserLobby ? (
-    <div className="flex gap-1.5 shrink-0">
+  <div className="flex gap-1.5 shrink-0 items-center">
+    {/* Only shown if user is in the lobby AND is the party leader */}
+    {isPartyLeader && (
       <button
-        onClick={onEnterQueue}
-        className="bg-th-primary px-3 py-2 rounded-xl text-xs font-bold transition-colors"
+        onClick={() => onEnterQueue(lobby._id)}
+        className="bg-th-primary px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
       >
         Enter Queue →
       </button>
-      <button
-        onClick={onLeave}
-        className="px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
-      >
-        Leave
-      </button>
-    </div>
-  ) : hasPendingRequest ? (
+    )}
+
+    {/* Shown for any user in the lobby regardless of leadership */}
     <button
-      onClick={onCancelRequest}
-      className="px-3 py-2 rounded-xl text-xs font-semibold text-th-muted border border-th hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+      onClick={() => onLeave(lobby._id)}
+      className="px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
     >
-      Pending…
+      Leave
     </button>
-  ) : canJoin && !isFull ? (
-    <button
-      onClick={onRequestJoin}
-      className="bg-th-primary px-3 py-2 rounded-xl text-xs font-bold transition-colors"
-    >
-      Request to Join
-    </button>
-  ) : isFull ? (
-    <span className="text-xs font-semibold text-th-muted">Full</span>
-  ) : null;
+  </div>
+) : hasPendingRequest ? (
+  <button
+    onClick={onCancelRequest}
+    className="px-3 py-2 rounded-xl text-xs font-semibold text-th-muted border border-th hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors cursor-pointer"
+  >
+    Pending…
+  </button>
+) : canJoin && !isFull ? (
+  <button
+    onClick={onRequestJoin}
+    className="bg-th-primary px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+  >
+    Request to Join
+  </button>
+) : isFull ? (
+  <span className="text-xs font-semibold text-th-muted">Full</span>
+) : null;
 
   return (
     <div
@@ -77,7 +84,7 @@ export function PartyLobbyRow({
               key={p.id}
               className="w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-sm font-bold text-white bg-th-primary"
             >
-              {p.name.charAt(0)}
+              {p.username.charAt(0)}
             </div>
           ))}
           {Array.from({ length: spotsLeft }).map((_, i) => (
@@ -93,7 +100,7 @@ export function PartyLobbyRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-th-heading text-sm">
-              {lobby.players[0]?.name ?? 'Unknown'}'s Party
+              {lobby.players[0]?.username ?? 'Unknown'}'s Party
             </span>
             {/* Red badge for pending requests (owner only) */}
             {isUserLobby && pendingRequests.length > 0 && (
@@ -119,7 +126,7 @@ export function PartyLobbyRow({
               key={p.id}
               className="text-xs font-medium text-th-body bg-th-page px-2 py-0.5 rounded-full border border-th"
             >
-              {p.name}
+              {p.username}
             </span>
           ))}
         </div>
@@ -137,19 +144,19 @@ export function PartyLobbyRow({
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white bg-th-primary shrink-0"
               >
-                {req.player.name.charAt(0)}
+                {req.username.charAt(0)}
               </div>
               <span className="text-sm font-medium text-th-body flex-1 truncate">
-                {req.player.name}
+                {req.username}
               </span>
               <button
-                onClick={() => onApprove(req.id)}
+                onClick={() => onApprove(lobby._id, req.id)}
                 className="text-xs font-bold text-green-700 bg-green-100 hover:bg-green-200 px-2.5 py-1 rounded-full transition-colors"
               >
                 ✓
               </button>
               <button
-                onClick={() => onDeny(req.id)}
+                onClick={() => onDeny(lobby._id, req.id)}
                 className="text-xs font-bold text-red-700 bg-red-100 hover:bg-red-200 px-2.5 py-1 rounded-full transition-colors"
               >
                 ✕

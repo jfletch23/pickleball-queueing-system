@@ -163,12 +163,12 @@ const deletePractice = async (req, res) => {
     return;
   }
   try {
-    const [practiceResult, chipsResult] = await Promise.all([
+    const [practiceResult, chipsResult, partyResult] = await Promise.all([
       practices.deleteOne({code : req.params.code}),
       queueChips.deleteMany({practiceCode : req.params.code}),
       parties.deleteMany({practiceCode: req.params.code})
     ])
-    if (practiceResult.acknowledged != true || chipsResult.acknowledged != true) {
+    if (practiceResult.acknowledged != true || chipsResult.acknowledged != true || partyResult.acknowledged != true) {
       res.status(500).json({error : "Error connecting to MongoDB"})
       return
     }
@@ -179,7 +179,7 @@ const deletePractice = async (req, res) => {
     broadcast(req.params.code, { type: "practice_deleted" });
     res
       .status(200)
-      .json({ practiceResult: practiceResult, chipsResult: chipsResult });
+      .json({ practiceResult: practiceResult, chipsResult: chipsResult, partyResult: partyResult });
   } catch (err) {
     res.status(500).json({ error: err });
   }
@@ -487,37 +487,7 @@ const appointAdmin = async (req, res) => {
   }
 };
 
-const getPartiesState = async (practiceCode) => {
-  return await parties.find({practiceCode: practiceCode}).sort({createdAt: 1}).toArray()
-}
-const checkPartyExists = async (req, res, next)=>{
-  const partyId = new ObjectId(req.params.partyId)
-  if(!partyId){
-    res.status(400).json({error: "invalid party"})
-    return
-  }
-  try{
-    const party = await parties.findOne({_id: partyId, practiceCode: req.params.code})
-    if(!party){
-      res.status(404).json({error: "party not found"})
-      return
-    }
-    req.party = party
-    next()
-  } catch(err){
-    res.status(500).json({error : err.message})
-
-  }
-
-}
-const getParties = async (req, res) => {
-  try {
-    const partyList = await getPartiesState(req.params.code)
-    res.status(200).json({parties: partyList})
-  } catch (err) {
-    res.status(500).json({error : err.message})
-  }
-}
+//-------------PARTY MIDDLEWARE-----------
 //create party
 //POST request, takes playerId of party leader
 const createParty = async (req, res)=>{
@@ -533,7 +503,7 @@ const createParty = async (req, res)=>{
       players: playerId,
     });
     if (existing) {
-      res.status(400).json({ error: "Player is alreay in this party" });
+      res.status(400).json({ error: "Player is already in this party" });
       return;
     }
     await parties.insertOne({
@@ -543,9 +513,10 @@ const createParty = async (req, res)=>{
       requests: [],
       createdAt: new Date(),
     });
-
-    const partyList = await parties.find({ practiceCode: code }).toArray();
-    res.status(200).json({ parties: partyList });
+    
+    const partyState = await getPartiesState(req.practice, req.params.code)
+    broadcast(code, { type: "party", partyState });
+    res.status(200).json(partyState)
   } catch (err) {
     //Duplicate key error code
     if (err.code === 11000) {
@@ -556,7 +527,68 @@ const createParty = async (req, res)=>{
   }
 }
 
+//Helper function, not middleware
+const getPartiesState = async (practice, practiceCode) => {
+  const partyArray = await parties.find({practiceCode: practiceCode}).sort({createdAt: 1}).toArray()
+  const playerMap = new Map(
+    practice.players.map((player) => [player.id.toString(), player]),
+  );
+
+  const hydratedParty = partyArray.map((party) => ({
+    ...party,
+    players: party.players.map((playerId) => {
+      const foundPlayer = playerMap.get(playerId.toString());
+      if (!foundPlayer) {
+        return { id: playerId, username: "Unknown player" };
+      }
+      const {password, ...otherData} = foundPlayer;
+      return otherData
+    }),
+    requests: party.requests.map((request) => {
+      const foundPlayer = playerMap.get(request.playerId.toString());
+      if (!foundPlayer) {
+        return {playerId: request.playerId, username: "Unknown player", requestedAt: request.requestedAt}
+      }
+      const {password, ...otherData} = foundPlayer
+      return {...otherData, requestedAt: request.requestedAt}
+    })
+  }))
+
+  return {parties: hydratedParty}
+}
+
+//Middleware similar to checkPracticeExists
+const checkPartyExists = async (req, res, next)=> {
+  const partyId = new ObjectId(req.params.partyId)
+  if(!partyId){
+    res.status(400).json({error: "invalid party"})
+    return
+  }
+  try{
+    const party = await parties.findOne({_id: partyId, practiceCode: req.params.code})
+    if(!party){
+      res.status(404).json({error: "party not found"})
+      return
+    }
+    req.party = party
+    next()
+  } catch(err){
+    res.status(500).json({error : err.message})
+  }
+}
+
+//GET endpoint
+const getParties = async (req, res) => {
+  try {
+    const partyState = await getPartiesState(req.practice, req.params.code)
+    res.status(200).json(partyState)
+  } catch (err) {
+    res.status(500).json({error : err.message})
+  }
+}
+
 //send party request
+//POST request with playerId in payload, this is the ID of the player requesting to join the party specified by the partyId in URL
 const requestJoinParty = async (req, res)=>{
   const code = req.params.code
   const playerId = new ObjectId(req.body.playerId)
@@ -568,10 +600,9 @@ const requestJoinParty = async (req, res)=>{
   try {
     const existing = await parties.findOne({practiceCode: code, players: playerId})
     if(existing){
-      res.status(400).json({error: " already in a part leave to request "})
+      res.status(400).json({error: " already in a party leave to request "})
       return
     }
-    
 
     const result = await parties.updateOne(
       {
@@ -585,13 +616,15 @@ const requestJoinParty = async (req, res)=>{
       res.status(400).json({error : "Party is full or request was already sent"})
       return
     }
-    const partyList = await getPartiesState(code)
-    res.status(200).json({parties: partyList})
+    const partyState = await getPartiesState(req.practice, code)
+    broadcast(code, {type: "party", partyState})
+    res.status(200).json(partyState)
   } catch (err) {
-    
+    res.status(500).json({error : err})
   }
 }
 
+//POST request with playerId in payload and practice code and party id in URL
 const cancelJoinRequest = async (req, res)=>{
   const code = req.params.code
   if (!ObjectId.isValid(req.body.playerId)) {
@@ -601,15 +634,15 @@ const cancelJoinRequest = async (req, res)=>{
   const playerId = new ObjectId(req.body.playerId)
   try {
     await parties.updateOne({_id: req.party._id}, {$pull: {requests: {playerId: playerId}}})
-    const partyList = await getPartiesState(code)
-    res.status(200).json({parties: partyList})
+    const partyState = await getPartiesState(req.practice, code)
+    broadcast(code, {type: "party", partyState})
+    res.status(200).json(partyState)
   } catch (err) {
     res.status(500).json({error : err.message})
   }
-
 }
 
-//accept invite
+//POST request with party leader player ID (the one who has to accept request), playerId of player who requested to join party, and a boolean flag indicating whether they have been admitted or denied into the party
 const respondToJoinRequest = async (req, res)=>{
 const code = req.params.code
 if (!ObjectId.isValid(req.body.leaderId) || !ObjectId.isValid(req.body.playerId)) {
@@ -618,23 +651,28 @@ if (!ObjectId.isValid(req.body.leaderId) || !ObjectId.isValid(req.body.playerId)
 }
 const leaderId = new ObjectId(req.body.leaderId)
 const playerId = new ObjectId(req.body.playerId)
+//req.body.accept is the boolean flag indicating whether the party leader is admitting or denying entry to the player
 const accept = req.body.accept === true
 if (!leaderId || !playerId) {
   
 }
+//If the party leader ID for the specified party does not match payload party ID, then 403 status and return
 if (!req.party.leaderId.equals(leaderId)) {
-  res.status(403).json({error: "Only the part leader can accept request"})
+  res.status(403).json({error: "Only the party leader can accept request"})
   return
 }
 
 try {
-  if(!accept){
+  //If not admitted to party, remove the request
+  if (!accept) {
     await parties.updateOne({_id: req.party._id}, {$pull: {requests: {playerId: playerId}}})
-    const partyList = await getPartiesState(code)
-    res.status(200).json({parties: partyList})
+    const partyState = await getPartiesState(req.practice, code)
+    broadcast(code, {type: "party", partyState})
+    res.status(200).json(partyState)
     return
   }
   //One atomic update: only works if the request exists and the party still has room
+  //Specifying it is atomic since it is doing two operations, admitting into the party and pulling the request
     const updated = await parties.findOneAndUpdate(
       {
         _id: req.party._id,
@@ -654,8 +692,9 @@ try {
     }
     //Player is in a party now, so drop their requests to every other party
     await parties.updateMany({practiceCode: code}, {$pull: {requests: {playerId: playerId}}})
-    const partyList = await getPartiesState(code)
-    res.status(200).json({parties: partyList})
+    const partyState = await getPartiesState(req.practice, code)
+    broadcast(code, {type: "party", partyState})
+    res.status(200).json(partyState)
 } catch (err) {
   if (err.code === 11000) {
       res.status(400).json({error : "Player already joined another party"})
@@ -666,6 +705,7 @@ try {
 }
 
 //leave party
+//POST request with playerId of player who wants to leave the party in the payload and practice code and partyId in URL
 const leaveParty = async (req, res)=>{
   const code = req.params.code
   const playerId = new ObjectId(req.body.playerId)
@@ -681,12 +721,15 @@ const leaveParty = async (req, res)=>{
         const newLeaderId = req.party.leaderId.equals(playerId)? remaining[0]: req.party.leaderId
         await parties.updateOne({_id: req.party._id}, {$pull: {players: playerId}, $set: {leaderId: newLeaderId}})
       }
-      const partyList = await getPartiesState(code)
-      res.status(200).json({parties: partyList})
+      const partyState = await getPartiesState(req.practice, code)
+      broadcast(code, {type: "party", partyState})
+      res.status(200).json(partyState)
     } catch (err) {
       res.status(500).json({error : err.message})
     }
 }
+
+//POST request with a party leader ID in payload and URL parameters of practice code and partyId
 const enqueueParty = async(req, res)=>{
   const code = req.params.code
 
@@ -720,8 +763,8 @@ const enqueueParty = async(req, res)=>{
         })
       }
       await parties.deleteOne({_id: req.party._id})
-          const [dashboard, partyList] = await Promise.all([getDashboardState(code), getPartiesState(code)])
-          res.status(200).json({...dashboard,parties: partyList})
+      const [dashboard, partyState] = await Promise.all([getDashboardState(req.practice, code), getPartiesState(req.practice, code)])
+      res.status(200).json({...dashboard, partyState: partyState})
   } catch (err) {
         res.status(500).json({error : err.message})
   }
@@ -754,20 +797,21 @@ app.post(
 
 app.post("/api/practice/:code/queue/leave", checkPracticeExists, leaveQueue);
 
-//TODO: party logic
-//create party
-//leave party
-//send and get invites
-//accept invite
+//---PARTY ENDPOINTS-----
+app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
 
 app.post("/api/practice/:code/party/create", checkPracticeExists, createParty)
-app.post("/api/practice/:code/party/:partyId/enqueue", checkPracticeExists, checkPartyExists, enqueueParty)
-app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
+
 app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, checkPartyExists, requestJoinParty)
 app.post("/api/practice/:code/party/:partyId/request/cancel", checkPracticeExists, checkPartyExists, cancelJoinRequest)
 app.post("/api/practice/:code/party/:partyId/request/respond", checkPracticeExists, checkPartyExists, respondToJoinRequest)
+
 app.post("/api/practice/:code/party/:partyId/leave", checkPracticeExists, checkPartyExists, leaveParty)
 
+app.post("/api/practice/:code/party/:partyId/enqueue", checkPracticeExists, checkPartyExists, enqueueParty)
+
+
+//--------------WEBSOCKET---------------------
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
 const rooms = new Map();
@@ -797,7 +841,6 @@ wss.on("connection", (socket) => {
       return;
     }
 
-    if (msg.type === "join" && typeof msg.code === "string") {
       try {
         const exists = await practices.findOne({ code: msg.code });
         if (!exists) {
@@ -810,13 +853,16 @@ wss.on("connection", (socket) => {
         socket.practiceCode = msg.code;
         if (!rooms.has(msg.code)) rooms.set(msg.code, new Set());
         rooms.get(msg.code).add(socket);
-        // send current state right away (this also resyncs after a reconnect)
-        const state = await getDashboardState(exists, msg.code);
-        socket.send(JSON.stringify({ type: "state", state }));
+        if (msg.type === "join" && typeof msg.code === 'string') {
+          const state = await getDashboardState(exists, msg.code)
+          socket.send(JSON.stringify({type : "state", state}))
+        } else if (msg.type === "party") {
+          const partyState = await getPartiesState(exists, msg.code)
+          socket.send(JSON.stringify({type: "party", partyState}))
+        }
       } catch (err) {
         console.error("ws join failed", err);
       }
-    }
   });
 
   socket.on("close", () => leaveRoom(socket));

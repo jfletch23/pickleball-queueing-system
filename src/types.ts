@@ -49,20 +49,30 @@ export interface DashboardState {
   queue: QueueChip[];
   courts: Court[];
   admins: string[];
+  parties: PartyLobby[];
 }
 
 export interface PartyLobby {
-  id: string;
-  players: Player[];
+  _id: string;
+  players: UserState[];
   createdAt: number;
+  leaderId: string;
+  requests: PartyJoinRequest[]
 }
 
+export interface PartyJoinRequest {
+  id: string;
+  username: string;
+  requestedAt: Date;
+}
+
+/*OLD
 export interface PartyJoinRequest {
   id: string;
   lobbyId: string;
   player: Player;
   requestedAt: number;
-}
+}*/
 
 export type ThemeName = "forest" | "dark" | "ocean" | "sunset";
 

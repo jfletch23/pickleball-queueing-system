@@ -38,14 +38,22 @@ export default function QueuePage({
   const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(
     new Set(),
   );
+  const isAdmin = promotedAdminIds.has(user.id)
   const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(
     null,
   );
+
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
-  const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
+  //const [userCurrentPartyLobbyId, setUserCurrentPartyLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
+
   const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
-  const isAdmin = promotedAdminIds.has(user.id)
+
+  //So this line is basically replacing the useState we had before of saving the party lobbby ID the user is currently in into a useState
+  //The problem with this is that it was not persisent enough, on page refresh the useState would go back to null but the other party state data would persist and there would be a mismatch
+  //Now this is a derived state because partyLobbies is a useState that gets kept along even with page refreshes through a web socket and useEffect
+  const userCurrentPartyLobbyId = partyLobbies.find((party) => party.players.some((u) => u.id === user.id))?._id ?? null
+  
 
   function applyState(state: DashboardState) {
     setCourts(state.courts);
@@ -53,9 +61,15 @@ export default function QueuePage({
     setPromotedAdminIds(new Set(state.admins))
   }
 
+  function applyPartyState(partyState : DashboardState) {
+    console.log("Setting party to ", partyState)
+    setPartyLobbies(partyState.parties)
+  }
+
   //update after every change
   useQueueSocket<DashboardState>(practice?.code, {
     onState: applyState,
+    onPartyState: applyPartyState,
     onDeleted: () => {
       window.alert("This practice was ended.");
       onLogout();
@@ -82,6 +96,25 @@ export default function QueuePage({
     }
   }
 
+  async function party_post(partyId: string, path: string, body: unknown) {
+    if (!practice) return
+    try {
+      const res = await fetch(`/api/practice/${practice.code}/party/${partyId}/${path}`, {
+        method: "POST",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify(body)
+      })
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        window.alert(data?.error ?? "Something went wrong, please try again.")
+        return
+      }
+      applyPartyState(data)
+    } catch (err) {
+      window.alert("Could not reach server.")
+    }
+  }
+
   //timer ticks every second
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -91,72 +124,53 @@ export default function QueuePage({
   //-----------Handlers--------------------
 
   //-----------Party System Handlers-------
-  function handleRequestJoinPartyLobby(lobbyId: string) {
-    const requestId = `req-${user.id}-${lobbyId}`;
-    setJoinRequests((prev) => [
-      ...prev,
-      {
-        id: requestId,
-        lobbyId,
-        player: { id: user.id, name: user.username },
-        requestedAt: Date.now(),
-      },
-    ]);
+  async function handleCreateParty() {
+    if (!practice) return
+    const response = await fetch(`/api/practice/${practice.code}/party/create`, {
+      method: "POST",
+      headers: {"Content-Type" : "application/json"},
+      body: JSON.stringify({playerId: user.id})
+    })
+    const data = await response.json()
+    console.log("Data is ", data)
+    applyPartyState(data)
   }
 
-  function handleCreateParty() {
-    setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
-    const lobbyId = `lobby-${user.id}`;
-    setPartyLobbies((prev) => [
-      ...prev,
-      {
-        id: lobbyId,
-        players: [{ id: user.id, name: user.username }],
-        createdAt: Date.now(),
-      },
-    ]);
-    setUserLobbyId(lobbyId);
+  function handleRequestJoinPartyLobby(partyId: string) {
+    party_post(partyId, 'request', {playerId: user.id})
   }
 
-  function handleCancelPartyJoinRequest(lobbyId: string) {
-    setJoinRequests((prev) =>
-      prev.filter((r) => !(r.lobbyId === lobbyId && r.player.id === user.id)),
-    );
+  function handleCancelPartyJoinRequest(partyId: string) {
+    party_post(partyId, 'request/cancel', {playerId: user.id})
   }
 
-  function handleApprovePartyJoinRequest(requestId: string) {
-    const req = joinRequests.find((r) => r.id === requestId);
-    if (req === undefined) return;
-    setPartyLobbies((prev) =>
-      prev.map((l) => {
-        if (l.id !== req.lobbyId || l.players.length >= 4) return l;
-        return { ...l, players: [...l.players, req.player] };
-      }),
-    );
-    setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+  function handleApprovePartyJoinRequest(partyId: string, requesteeId: string) {
+    party_post(partyId, 'request/respond', {leaderId: user.id, playerId: requesteeId, accept: true})
   }
 
-  function handleDenyPartyJoinRequest(requestId: string) {
-    setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+  function handleDenyPartyJoinRequest(partyId: string, requesteeId: string) {
+    party_post(partyId, 'request/respond', {leaderId: user.id, playerId: requesteeId, accept: false})
   }
 
-  function handleLeavePartyLobby() {
-    if (userLobbyId === null) return;
-    // clear pending requests for this lobby
-    setJoinRequests((prev) => prev.filter((r) => r.lobbyId !== userLobbyId));
-    setPartyLobbies((prev) =>
-      prev
-        .map((l): PartyLobby | null => {
-          if (l.id !== userLobbyId) return l;
-          const remaining = l.players.filter((p) => p.id !== user.id);
-          return remaining.length === 0 ? null : { ...l, players: remaining };
-        })
-        .filter((l): l is PartyLobby => l !== null),
-    );
-    setUserLobbyId(null);
+  function handleLeavePartyLobby(partyId: string) {
+    if (userCurrentPartyLobbyId === null) return;
+
+    party_post(partyId, "leave", {playerId: user.id}) 
   }
 
-  function handleEnterQueueFromPartyLobby() {}
+  async function handleEnterQueueFromPartyLobby(partyId: string) {
+    if (!practice) return
+    const response = await fetch(`/api/practice/${practice.code}/party/${partyId}/enqueue`, {
+      method: "POST",
+      headers: {"Content-Type" : "application/json"},
+      body: JSON.stringify({leaderId: user.id})
+    })
+    const data = await response.json()
+    console.log("New data is", data)
+    setPartyLobbies(data.partyState.parties)
+    applyState(data)
+
+  }
 
   //---------Other Handlers-----------
   async function handleDeletePractice() {
@@ -209,7 +223,6 @@ export default function QueuePage({
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
-    setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
     void post("player/enqueue", { playerId: user.id });
   }
 
@@ -399,12 +412,12 @@ export default function QueuePage({
             </div>
             {userEntryId === null &&
               userOnCourt === null &&
-              userLobbyId === null && (
+              userCurrentPartyLobbyId === null && (
                 <button
                   onClick={handleCreateParty}
-                  className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
                 >
-                  🎾 Start a Party
+                  🎉 Start a Party
                 </button>
               )}
           </div>
@@ -421,23 +434,20 @@ export default function QueuePage({
             <div className="space-y-3">
               {partyLobbies.map((lobby) => (
                 <PartyLobbyRow
-                  key={lobby.id}
+                  key={lobby._id}
                   lobby={lobby}
-                  isUserLobby={lobby.id === userLobbyId}
+                  isUserLobby={lobby._id === userCurrentPartyLobbyId}
+                  isPartyLeader={lobby.leaderId === user.id}
                   canJoin={
                     userEntryId === null &&
                     userOnCourt === null &&
-                    userLobbyId === null
+                    userCurrentPartyLobbyId === null
                   }
-                  hasPendingRequest={joinRequests.some(
-                    (r) => r.lobbyId === lobby.id && r.player.id === user.id,
-                  )}
-                  pendingRequests={joinRequests.filter(
-                    (r) => r.lobbyId === lobby.id,
-                  )}
-                  onRequestJoin={() => handleRequestJoinPartyLobby(lobby.id)}
-                  onCancelRequest={() => handleCancelPartyJoinRequest(lobby.id)}
-                  onEnterQueue={handleEnterQueueFromPartyLobby}
+                  hasPendingRequest={lobby.requests.some((request) => request.id === user.id)}
+                  pendingRequests={lobby.requests}
+                  onRequestJoin={() => handleRequestJoinPartyLobby(lobby._id)}
+                  onCancelRequest={() => handleCancelPartyJoinRequest(lobby._id)}
+                  onEnterQueue={() => handleEnterQueueFromPartyLobby(lobby._id)}
                   onLeave={handleLeavePartyLobby}
                   onApprove={handleApprovePartyJoinRequest}
                   onDeny={handleDenyPartyJoinRequest}
@@ -460,7 +470,7 @@ export default function QueuePage({
             <div className="flex gap-2">
               {userEntryId === null &&
                 userOnCourt === null &&
-                userLobbyId === null && (
+                userCurrentPartyLobbyId === null && (
                   <button
                     onClick={handleJoinQueue}
                     className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer"
