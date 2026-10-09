@@ -6,11 +6,14 @@ import {
   type PartyJoinRequest,
   type UserState,
   type PracticeState,
-  type DashboardState
-} from '../types';
-import {CourtCard, CourtAdminView} from '../components/Court.tsx';
-import { QueueEntryDetailView, QueueEntryRow } from '../components/QueueEntry.tsx';
-import {PartyLobbyRow} from "../components/Party.tsx"
+  type DashboardState,
+} from "../types";
+import { CourtCard, CourtAdminView } from "../components/Court.tsx";
+import {
+  QueueEntryDetailView,
+  QueueEntryRow,
+} from "../components/QueueEntry.tsx";
+import { PartyLobbyRow } from "../components/Party.tsx";
 import { useQueueSocket } from "../useQueueSocket";
 
 // Main component
@@ -22,17 +25,27 @@ interface QueuePageProps {
   onOpenThemes: () => void;
 }
 
-export default function QueuePage({ user, practice, onLogout, onOpenThemes }: QueuePageProps) {
+export default function QueuePage({
+  user,
+  practice,
+  onLogout,
+  onOpenThemes,
+}: QueuePageProps) {
   const [courts, setCourts] = useState<Court[]>([]);
   const [queue, setQueue] = useState<QueueChip[]>([]);
   const [now, setNow] = useState(Date.now());
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(new Set());
-  const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(null);
+  const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(
+    null,
+  );
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
-  const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
+  const userEntryId =
+    queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
 
   function applyState(state: DashboardState) {
     setCourts(state.courts);
@@ -84,7 +97,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       {
         id: requestId,
         lobbyId,
-        player: { id: user.id, name: user.username},
+        player: { id: user.id, name: user.username },
         requestedAt: Date.now(),
       },
     ]);
@@ -97,7 +110,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
       ...prev,
       {
         id: lobbyId,
-        players: [{ id: user.id, name: user.username}],
+        players: [{ id: user.id, name: user.username }],
         createdAt: Date.now(),
       },
     ]);
@@ -142,27 +155,43 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setUserLobbyId(null);
   }
 
-  function handleEnterQueueFromPartyLobby() {
-
-  }
+  function handleEnterQueueFromPartyLobby() {}
 
   //---------Other Handlers-----------
+  async function handleDeletePractice() {
+    if (!practice) return;
+    if (
+      !window.confirm(
+        "End this practice for everyone? This deletes the queue and can't be undone.",
+      )
+    )
+      return;
+    try {
+      const res = await fetch(`/api/practice/${practice.code}/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId: user.id }),
+      });
+
+      if (!res.ok) {
+        window.alert("Could not end the practice.");
+        return;
+      }
+      onLogout();
+    } catch {
+      window.alert("Could not reach the server.");
+    }
+  }
 
   async function handleEndGame(courtId: string, courtNumber: number) {
-    void post("game/end", { queueChipId: courtId, courtNumber: courtNumber});
+    void post("game/end", { queueChipId: courtId, courtNumber: courtNumber });
   }
 
-  function handleMakeAdmin() {
+  function handleMakeAdmin() {}
 
-  }
+  function handleJoinQueueChip(input: string) {}
 
-  function handleJoinQueueChip(input : string) {
-
-  }
-
-  function handleLeaveQueueChip(input : string) {
-
-  }
+  function handleLeaveQueueChip(input: string) {}
 
   function handleLeaveQueue() {
     void post("queue/leave", { playerId: user.id });
@@ -179,12 +208,16 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   const userOnCourt =
     courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
   const userQueuePosition =
-    userEntryId !== null ? queue.findIndex((e) => e._id === userEntryId) + 1 : 0;
+    userEntryId !== null
+      ? queue.findIndex((e) => e._id === userEntryId) + 1
+      : 0;
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
   if (selectedCourtNumber !== null && user.isAdmin) {
-    const selectedCourt = courts.find((c) => c.courtNumber === selectedCourtNumber);
+    const selectedCourt = courts.find(
+      (c) => c.courtNumber === selectedCourtNumber,
+    );
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
       return (
         <CourtAdminView
@@ -257,8 +290,20 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
             {/* Skill circle + username on sm+, just skill circle on mobile */}
             <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-th">
-              <span className="text-sm font-medium text-th-body">{user.username}</span>
+              <span className="text-sm font-medium text-th-body">
+                {user.username}
+              </span>
             </div>
+
+            {user.isAdmin && (
+              <button
+                onClick={handleDeletePractice}
+                className="text-sm font-medium text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 transition-colors px-2 sm:px-3 py-1.5 rounded-lg"
+              >
+                <span className="sm:hidden">🗑</span>
+                <span className="hidden sm:inline">End Practice</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenThemes}
@@ -296,7 +341,9 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
             <div className="min-w-0">
               {userOnCourt !== null ? (
                 <>
-                  <div className="font-bold text-lg sm:text-xl">You're on Court {userOnCourt.courtNumber}!</div>
+                  <div className="font-bold text-lg sm:text-xl">
+                    You're on Court {userOnCourt.courtNumber}!
+                  </div>
                   <div className="text-sm opacity-80">Enjoy your game!</div>
                 </>
               ) : (
@@ -333,7 +380,11 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 now={now}
                 isAdmin={user.isAdmin}
                 onEndGame={() => handleEndGame(court._id, court.courtNumber)}
-                onClick={user.isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
+                onClick={
+                  user.isAdmin && court.players.length > 0
+                    ? () => setSelectedCourtNumber(court.courtNumber)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -455,7 +506,10 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                   entry={entry}
                   position={index + 1}
                   isUser={entry._id === userEntryId}
-                  onClick={() => {setSelectedEntryId(entry._id), console.log("You clicked on ", entry._id)}}
+                  onClick={() => {
+                    (setSelectedEntryId(entry._id),
+                      console.log("You clicked on ", entry._id));
+                  }}
                 />
               ))}
             </div>
