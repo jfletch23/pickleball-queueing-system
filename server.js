@@ -1,4 +1,5 @@
 import express from "express";
+import path from "node:path"
 import { MongoClient, ObjectId } from "mongodb";
 import http from "http";
 import { WebSocketServer } from "ws";
