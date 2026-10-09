@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import LoginPage from '@/pages/LoginPage';
 import QueuePage from '@/pages/QueuePage';
 import ThemePage from '@/pages/ThemePage';
@@ -21,17 +21,35 @@ export default function App() {
 
   function handleEnter(u: UserState, p: PracticeState) {
     setUser(u);
-    setPractice(p)
-    console.log("Practice is ", p)
+    setPractice(p);
     setPage('queue');
     saveSession(u);
+    localStorage.setItem('pbq_practice_code', p.code);
   }
 
   function handleLogout() {
     setUser(null);
+    setPractice(null);
     setPage('login');
     clearSession();
+    localStorage.removeItem('pbq_practice_code');
   }
+
+  // Load practice from localStorage on refresh
+  useEffect(() => {
+    if (user === null || practice !== null) {
+      return;
+    }
+    const code = localStorage.getItem('pbq_practice_code');
+    if (!code) {
+      handleLogout();
+      return;
+    }
+    fetch(`/api/practice/${code}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setPractice)
+      .catch(handleLogout);
+  }, [user, practice]);
 
   if (page === 'themes') {
     return (
@@ -44,6 +62,7 @@ export default function App() {
   }
 
   if (page === 'queue' && user !== null) {
+    if (practice === null) return <div className="p-6">Loading…</div>;
     return (
       <QueuePage
         user={user}
