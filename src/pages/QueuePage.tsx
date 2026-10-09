@@ -314,7 +314,7 @@ export default function QueuePage({
 
             <button
               onClick={onOpenThemes}
-              className="text-sm font-medium text-th-muted hover:text-th-primary transition-colors px-2 sm:px-3 py-1.5 rounded-lg border border-th hover:border-th-primary cursor-pointer"
+              className="flex items-center gap-2 text-sm font-medium text-th-muted hover:text-th-primary border border-th hover:border-th-primary px-2 sm:px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
             >
               <span className="sm:hidden">🎨</span>
               <span className="hidden sm:inline">🎨 Themes</span>
@@ -463,7 +463,7 @@ export default function QueuePage({
                 userLobbyId === null && (
                   <button
                     onClick={handleJoinQueue}
-                    className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                    className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer"
                   >
                     + Join Solo
                   </button>
