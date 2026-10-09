@@ -75,7 +75,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
   }, []);
 
   //-----------Handlers--------------------
-  
+
   //-----------Party System Handlers-------
   function handleRequestJoinPartyLobby(lobbyId: string) {
     const requestId = `req-${user.id}-${lobbyId}`;
@@ -257,7 +257,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
             {/* Skill circle + username on sm+, just skill circle on mobile */}
             <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border border-th">
-              <span className="text-sm font-medium text-th-body hidden sm:block">{user.username}</span>
+              <span className="text-sm font-medium text-th-body">{user.username}</span>
             </div>
 
             <button
