@@ -1,5 +1,6 @@
 import express from "express";
 import path from "node:path"
+import { fileURLToPath } from 'node:url';
 import { MongoClient, ObjectId } from "mongodb";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -877,6 +878,8 @@ setInterval(() => {
   });
 }, 30000);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'dist')));
 
 const PORT = process.env.PORT || 3001;
