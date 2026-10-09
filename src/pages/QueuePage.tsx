@@ -298,7 +298,7 @@ export default function QueuePage({
             {user.isAdmin && (
               <button
                 onClick={handleDeletePractice}
-                className="text-sm font-medium text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 transition-colors px-2 sm:px-3 py-1.5 rounded-lg"
+                className="text-sm font-medium text-red-600 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 transition-colors px-2 sm:px-3 py-1.5 rounded-lg cursor-pointer"
               >
                 <span className="sm:hidden">🗑</span>
                 <span className="hidden sm:inline">End Practice</span>
