@@ -14,6 +14,7 @@ export default function App() {
   const [user, setUser] = useState<UserState | null>(savedUser);
   const [theme, setTheme] = useState<ThemeName>('forest');
   const [practice, setPractice] = useState<PracticeState | null>(null);
+  const [practiceFetchAttempt, setPracticeFetchAttempt] = useState(0);
 
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -35,7 +36,7 @@ export default function App() {
     localStorage.removeItem('pbq_practice_code');
   }
 
-  // Load practice from localStorage on refresh
+  // Restore practice from localStorage on refresh
   useEffect(() => {
     if (user === null || practice !== null) {
       return;
@@ -45,11 +46,28 @@ export default function App() {
       handleLogout();
       return;
     }
+    let cancelled = false;
     fetch(`/api/practice/${code}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then(setPractice)
-      .catch(handleLogout);
-  }, [user, practice]);
+      .then((r) => {
+        // only a confirmed 404 means this session is actually stale
+        if (r.status === 404) {
+          if (!cancelled) handleLogout();
+          return null;
+        }
+        if (!r.ok) throw new Error('practice fetch failed');
+        return r.json();
+      })
+      .then((data) => {
+        if (data !== null && !cancelled) setPractice(data);
+      })
+      .catch(() => {
+        // network hiccup or server not up yet, keep the session and retry shortly
+        if (!cancelled) setTimeout(() => setPracticeFetchAttempt((n) => n + 1), 2000);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, practice, practiceFetchAttempt]);
 
   if (page === 'themes') {
     return (

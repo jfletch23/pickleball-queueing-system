@@ -153,7 +153,7 @@ export function CourtAdminView({
                 className="bg-th-card rounded-2xl p-4 flex flex-col items-center text-center border border-th"
               >
                 <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white mb-2`}
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-black text-white bg-th-primary mb-2"
                 >
                   {player.username.charAt(0)}
                 </div>
