@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   type Court,
   type QueueChip,
@@ -74,8 +74,21 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     return () => clearInterval(id);
   }, []);
 
-  const myCourt = courts.find((c) => c.players.some((p) => p.id === user.id));
-  const prevCourtId = useRef<number | null | undefined>(undefined);
+  //-----------Handlers--------------------
+  
+  //-----------Party System Handlers-------
+  function handleRequestJoinPartyLobby(lobbyId: string) {
+    const requestId = `req-${user.id}-${lobbyId}`;
+    setJoinRequests((prev) => [
+      ...prev,
+      {
+        id: requestId,
+        lobbyId,
+        player: { id: user.id, name: user.username},
+        requestedAt: Date.now(),
+      },
+    ]);
+  }
 
   function handleCreateParty() {
     setJoinRequests((prev) => prev.filter((r) => r.player.id !== user.id));
@@ -91,27 +104,13 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setUserLobbyId(lobbyId);
   }
 
-  //-----------Handlers--------------------
-  function handleRequestJoinLobby(lobbyId: string) {
-    const requestId = `req-${user.id}-${lobbyId}`;
-    setJoinRequests((prev) => [
-      ...prev,
-      {
-        id: requestId,
-        lobbyId,
-        player: { id: user.id, name: user.username},
-        requestedAt: Date.now(),
-      },
-    ]);
-  }
-
-  function handleCancelJoinRequest(lobbyId: string) {
+  function handleCancelPartyJoinRequest(lobbyId: string) {
     setJoinRequests((prev) =>
       prev.filter((r) => !(r.lobbyId === lobbyId && r.player.id === user.id)),
     );
   }
 
-  function handleApproveJoinRequest(requestId: string) {
+  function handleApprovePartyJoinRequest(requestId: string) {
     const req = joinRequests.find((r) => r.id === requestId);
     if (req === undefined) return;
     setPartyLobbies((prev) =>
@@ -123,7 +122,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
   }
 
-  function handleDenyJoinRequest(requestId: string) {
+  function handleDenyPartyJoinRequest(requestId: string) {
     setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
   }
 
@@ -143,6 +142,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     setUserLobbyId(null);
   }
 
+  function handleEnterQueueFromPartyLobby() {
+
+  }
+
+  //---------Other Handlers-----------
+
   async function handleEndGame(courtId: string, courtNumber: number) {
     void post("game/end", { queueChipId: courtId, courtNumber: courtNumber});
   }
@@ -151,15 +156,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
   }
 
-  function handleJoinQueueEntry(input : string) {
+  function handleJoinQueueChip(input : string) {
 
   }
 
-  function handleLeaveGroup(input : string) {
+  function handleLeaveQueueChip(input : string) {
 
-  }
-
-  function handleEnterQueueFromLobby() {
   }
 
   function handleLeaveQueue() {
@@ -212,8 +214,8 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           userOnCourt={userOnCourt}
           promotedAdminIds={promotedAdminIds}
           onBack={() => setSelectedEntryId(null)}
-          onJoin={() => handleJoinQueueEntry(selectedEntryId)}
-          onLeave={() => handleLeaveGroup(selectedEntryId)}
+          onJoin={() => handleJoinQueueChip(selectedEntryId)}
+          onLeave={() => handleLeaveQueueChip(selectedEntryId)}
           onMakeAdmin={handleMakeAdmin}
         />
       );
@@ -386,12 +388,12 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                   pendingRequests={joinRequests.filter(
                     (r) => r.lobbyId === lobby.id,
                   )}
-                  onRequestJoin={() => handleRequestJoinLobby(lobby.id)}
-                  onCancelRequest={() => handleCancelJoinRequest(lobby.id)}
-                  onEnterQueue={handleEnterQueueFromLobby}
+                  onRequestJoin={() => handleRequestJoinPartyLobby(lobby.id)}
+                  onCancelRequest={() => handleCancelPartyJoinRequest(lobby.id)}
+                  onEnterQueue={handleEnterQueueFromPartyLobby}
                   onLeave={handleLeavePartyLobby}
-                  onApprove={handleApproveJoinRequest}
-                  onDeny={handleDenyJoinRequest}
+                  onApprove={handleApprovePartyJoinRequest}
+                  onDeny={handleDenyPartyJoinRequest}
                 />
               ))}
             </div>
