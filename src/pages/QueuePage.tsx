@@ -424,7 +424,7 @@ export default function QueuePage({
 
           {partyLobbies.length === 0 ? (
             <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
-              <div className="text-2xl mb-1">🎾</div>
+              <div className="text-2xl mb-1">🙁</div>
               <div className="font-semibold">No open parties</div>
               <div className="text-xs mt-0.5">
                 Start one to play with friends.
