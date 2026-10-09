@@ -224,7 +224,8 @@ const getDashboardState = async (practice, practiceCode) => {
   
   const queue = hydratedChips.filter((item) => item.status === QUEUE_STATUS.WAITING)
   const courts = hydratedChips.filter((item) => item.status === QUEUE_STATUS.PLAYING)
-  return {queue: queue, courts: courts}
+  const sorted_courts = courts.sort((a, b) => a.courtNumber - b.courtNumber)
+  return {queue: queue, courts: sorted_courts}
 }
 
 
