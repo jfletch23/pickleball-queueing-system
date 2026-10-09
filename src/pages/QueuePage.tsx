@@ -152,16 +152,31 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
     void post("game/end", { queueChipId: courtId, courtNumber: courtNumber});
   }
 
-  function handleMakeAdmin() {
+  async function handleMakeAdmin(playerId : string) {
+    //Cant use void post because it triggers a state change which is unnecessary since courts and queues not changing
+    //TODO: incorporate user into state so websocket triggers an update when a player is appointed as an admin so one their side the nav bar updates with the admin tag
+    const response = await fetch(`/api/practice/${practice?.code}/player/appointadmin`, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify({playerId: playerId})
+    })
+    setPromotedAdminIds((prevSet) => {
+      const newSet = new Set(prevSet)
+      newSet.add(playerId)
+      return newSet
+    })
+  }
+
+  function handleJoinQueueChip() {
+    void post("player/enqueue", {playerId: user.id})
 
   }
 
-  function handleJoinQueueChip(input : string) {
-
-  }
-
-  function handleLeaveQueueChip(input : string) {
-
+  function handleLeaveQueueChip() {
+    void post("queue/leave", {playerId: user.id})
+    setSelectedEntryId(null)
   }
 
   function handleLeaveQueue() {
@@ -214,8 +229,8 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
           userOnCourt={userOnCourt}
           promotedAdminIds={promotedAdminIds}
           onBack={() => setSelectedEntryId(null)}
-          onJoin={() => handleJoinQueueChip(selectedEntryId)}
-          onLeave={() => handleLeaveQueueChip(selectedEntryId)}
+          onJoin={() => handleJoinQueueChip()}
+          onLeave={() => handleLeaveQueueChip()}
           onMakeAdmin={handleMakeAdmin}
         />
       );
@@ -455,7 +470,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                   entry={entry}
                   position={index + 1}
                   isUser={entry._id === userEntryId}
-                  onClick={() => {setSelectedEntryId(entry._id), console.log("You clicked on ", entry._id)}}
+                  onClick={() => setSelectedEntryId(entry._id)}
                 />
               ))}
             </div>
