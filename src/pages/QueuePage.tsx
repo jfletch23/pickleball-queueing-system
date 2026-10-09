@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   type Court,
   type QueueChip,
@@ -30,6 +30,7 @@ export default function QueuePage({
   onLogout,
   onOpenThemes,
 }: QueuePageProps) {
+  const isInitialSyncDone = useRef(false)
   const [courts, setCourts] = useState<Court[]>([]);
   const [queue, setQueue] = useState<QueueChip[]>([]);
   const [now, setNow] = useState(Date.now());
@@ -56,10 +57,14 @@ export default function QueuePage({
     setCourts(state.courts);
     setQueue(state.queue);
     setPromotedAdminIds(new Set(state.admins))
+    if (!isInitialSyncDone.current) {
+      const initialCourt = state.courts.find((c) => c.players.some((p) => p.id === user.id))
+      prevCourtId.current = initialCourt?._id ?? null
+      isInitialSyncDone.current = true
+    }
   }
 
   function applyPartyState(partyState : DashboardState) {
-    console.log("Setting party to ", partyState)
     setPartyLobbies(partyState.parties)
   }
 
@@ -129,7 +134,6 @@ export default function QueuePage({
       body: JSON.stringify({playerId: user.id})
     })
     const data = await response.json()
-    console.log("Data is ", data)
     applyPartyState(data)
   }
 
@@ -163,7 +167,6 @@ export default function QueuePage({
       body: JSON.stringify({leaderId: user.id})
     })
     const data = await response.json()
-    console.log("New data is", data)
     setPartyLobbies(data.partyState.parties)
     applyState(data)
 
@@ -197,6 +200,7 @@ export default function QueuePage({
 
   async function handleEndGame(courtId: string, courtNumber: number) {
     void post("game/end", { queueChipId: courtId, courtNumber: courtNumber });
+    
   }
 
   async function handleMakeAdmin(playerId : string) {
@@ -222,6 +226,30 @@ export default function QueuePage({
     }
     void post("player/enqueue", { playerId: user.id });
   }
+
+  //Code for notifications, need to use useMemo, useEffect, and useRef in tandem to figure out when derived state updates and not send notification on reload
+  const userCourt = useMemo(() => {
+    return courts.find((c) => c.players.some((p) => p.id === user.id))
+  }, [courts, user])
+
+  const currentCourtId = userCourt?._id ?? null
+
+  const prevCourtId = useRef(currentCourtId)
+
+  useEffect(() => {
+    if (!isInitialSyncDone.current) {
+      return
+    }
+    if (currentCourtId !== prevCourtId.current) {
+      if (userCourt) {
+        new Notification("You're up!", {
+        body: `Head over to Court ${userCourt.courtNumber} and have fun!`
+      })
+      } else {
+      }
+    }
+    prevCourtId.current = currentCourtId
+  }, [currentCourtId, userCourt]);
 
   const userOnCourt =
     courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
