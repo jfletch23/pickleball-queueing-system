@@ -267,7 +267,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
 
             <button
               onClick={onOpenThemes}
-              className="text-sm font-medium text-th-muted hover:text-th-primary transition-colors px-2 sm:px-3 py-1.5 rounded-lg border border-th hover:border-th-primary"
+              className="text-sm font-medium text-th-muted hover:text-th-primary transition-colors px-2 sm:px-3 py-1.5 rounded-lg border border-th hover:border-th-primary cursor-pointer"
             >
               <span className="sm:hidden">🎨</span>
               <span className="hidden sm:inline">🎨 Themes</span>
@@ -277,8 +277,8 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
               onClick={onLogout}
               className="text-sm font-medium text-th-muted hover:text-red-500 transition-colors px-2 py-1.5"
             >
-              <span className="sm:hidden">✕</span>
-              <span className="hidden sm:inline">Leave</span>
+              <span className="sm:hidden cursor-pointer">✕</span>
+              <span className="hidden sm:inline cursor-pointer">Leave</span>
             </button>
           </div>
         </div>
@@ -308,13 +308,6 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
                 <>
                   <div className="font-bold text-lg sm:text-xl text-yellow-800">
                     You're #{userQueuePosition} in the queue
-                  </div>
-                  <div className="text-yellow-700 text-sm">
-                    Est. wait: ~
-                    {Math.ceil(
-                      userQueuePosition / Math.max(activeCourtsCount, 1),
-                    ) * 12}{" "}
-                    min
                   </div>
                 </>
               )}
@@ -429,7 +422,7 @@ export default function QueuePage({ user, practice, onLogout, onOpenThemes }: Qu
               {userEntryId !== null && (
                 <button
                   onClick={handleLeaveQueue}
-                  className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors cursor-pointer"
                 >
                   Leave Queue
                 </button>
