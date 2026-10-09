@@ -44,12 +44,13 @@ export default function QueuePage({
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
   const [userLobbyId, setUserLobbyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<PartyJoinRequest[]>([]);
-  const userEntryId =
-    queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
+  const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
+  const isAdmin = promotedAdminIds.has(user.id)
 
   function applyState(state: DashboardState) {
     setCourts(state.courts);
     setQueue(state.queue);
+    setPromotedAdminIds(new Set(state.admins))
   }
 
   //update after every change
@@ -187,11 +188,18 @@ export default function QueuePage({
     void post("game/end", { queueChipId: courtId, courtNumber: courtNumber });
   }
 
-  function handleMakeAdmin() {}
+  async function handleMakeAdmin(playerId : string) {
+    void post("player/appointadmin", {playerId: playerId})
+  }
 
-  function handleJoinQueueChip(input: string) {}
+  function handleJoinQueueChip() {
+    void post("player/enqueue", {playerId: user.id})
+  }
 
-  function handleLeaveQueueChip(input: string) {}
+  function handleLeaveQueueChip() {
+    void post("queue/leave", {playerId: user.id})
+    setSelectedEntryId(null)
+  }
 
   function handleLeaveQueue() {
     void post("queue/leave", { playerId: user.id });
@@ -214,10 +222,8 @@ export default function QueuePage({
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
-  if (selectedCourtNumber !== null && user.isAdmin) {
-    const selectedCourt = courts.find(
-      (c) => c.courtNumber === selectedCourtNumber,
-    );
+  if (selectedCourtNumber !== null && isAdmin) {
+    const selectedCourt = courts.find((c) => c.courtNumber === selectedCourtNumber);
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
       return (
         <CourtAdminView
@@ -244,11 +250,12 @@ export default function QueuePage({
           entry={selectedEntry}
           position={position}
           user={user}
+          isAdmin={isAdmin}
           userOnCourt={userOnCourt}
           promotedAdminIds={promotedAdminIds}
           onBack={() => setSelectedEntryId(null)}
-          onJoin={() => handleJoinQueueChip(selectedEntryId)}
-          onLeave={() => handleLeaveQueueChip(selectedEntryId)}
+          onJoin={() => handleJoinQueueChip()}
+          onLeave={() => handleLeaveQueueChip()}
           onMakeAdmin={handleMakeAdmin}
         />
       );
@@ -282,7 +289,7 @@ export default function QueuePage({
               </span>
             </div>
 
-            {user.isAdmin && (
+            {isAdmin && (
               <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded-full">
                 Admin
               </span>
@@ -307,7 +314,7 @@ export default function QueuePage({
 
             <button
               onClick={onOpenThemes}
-              className="text-sm font-medium text-th-muted hover:text-th-primary transition-colors px-2 sm:px-3 py-1.5 rounded-lg border border-th hover:border-th-primary"
+              className="text-sm font-medium text-th-muted hover:text-th-primary transition-colors px-2 sm:px-3 py-1.5 rounded-lg border border-th hover:border-th-primary cursor-pointer"
             >
               <span className="sm:hidden">🎨</span>
               <span className="hidden sm:inline">🎨 Themes</span>
@@ -317,8 +324,8 @@ export default function QueuePage({
               onClick={onLogout}
               className="text-sm font-medium text-th-muted hover:text-red-500 transition-colors px-2 py-1.5"
             >
-              <span className="sm:hidden">✕</span>
-              <span className="hidden sm:inline">Leave</span>
+              <span className="sm:hidden cursor-pointer">✕</span>
+              <span className="hidden sm:inline cursor-pointer">Leave</span>
             </button>
           </div>
         </div>
@@ -351,13 +358,6 @@ export default function QueuePage({
                   <div className="font-bold text-lg sm:text-xl text-yellow-800">
                     You're #{userQueuePosition} in the queue
                   </div>
-                  <div className="text-yellow-700 text-sm">
-                    Est. wait: ~
-                    {Math.ceil(
-                      userQueuePosition / Math.max(activeCourtsCount, 1),
-                    ) * 12}{" "}
-                    min
-                  </div>
                 </>
               )}
             </div>
@@ -378,13 +378,9 @@ export default function QueuePage({
                 key={court.courtNumber}
                 court={court}
                 now={now}
-                isAdmin={user.isAdmin}
+                isAdmin={isAdmin}
                 onEndGame={() => handleEndGame(court._id, court.courtNumber)}
-                onClick={
-                  user.isAdmin && court.players.length > 0
-                    ? () => setSelectedCourtNumber(court.courtNumber)
-                    : undefined
-                }
+                onClick={isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
               />
             ))}
           </div>
@@ -475,7 +471,7 @@ export default function QueuePage({
               {userEntryId !== null && (
                 <button
                   onClick={handleLeaveQueue}
-                  className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors cursor-pointer"
                 >
                   Leave Queue
                 </button>
@@ -506,10 +502,7 @@ export default function QueuePage({
                   entry={entry}
                   position={index + 1}
                   isUser={entry._id === userEntryId}
-                  onClick={() => {
-                    (setSelectedEntryId(entry._id),
-                      console.log("You clicked on ", entry._id));
-                  }}
+                  onClick={() => setSelectedEntryId(entry._id)}
                 />
               ))}
             </div>

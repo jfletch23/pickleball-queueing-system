@@ -274,20 +274,16 @@ const getDashboardState = async (practice, practiceCode) => {
       if (!foundPlayer) {
         return { id: playerId, username: "Unknown player" };
       }
-      const { password, ...otherData } = foundPlayer;
-      return otherData;
-    }),
-  }));
-
-  const queue = hydratedChips.filter(
-    (item) => item.status === QUEUE_STATUS.WAITING,
-  );
-  const courts = hydratedChips.filter(
-    (item) => item.status === QUEUE_STATUS.PLAYING,
-  );
-  const sorted_courts = courts.sort((a, b) => a.courtNumber - b.courtNumber);
-  return { queue: queue, courts: sorted_courts };
-};
+      const {password, ...otherData} = foundPlayer;
+      return otherData
+    })
+  }))
+  
+  const queue = hydratedChips.filter((item) => item.status === QUEUE_STATUS.WAITING)
+  const courts = hydratedChips.filter((item) => item.status === QUEUE_STATUS.PLAYING)
+  const sorted_courts = courts.sort((a, b) => a.courtNumber - b.courtNumber)
+  return {queue: queue, courts: sorted_courts, admins: practice.admins}
+}
 
 //POST request for enqueuing a player will include practice code in endpoint and player ID in body
 const enqueuePlayer = async (req, res) => {
@@ -475,16 +471,14 @@ const leaveQueue = async (req, res) => {
   }
 };
 
-//Mostly just making this endpoint for testing purposes, not sure when it will be implemented on the client (if at all)
 const appointAdmin = async (req, res) => {
   const code = req.params.code;
   const playerId = req.body.playerId;
   try {
-    const appoint = await practices.updateOne(
-      { code: code },
-      { $push: { admins: new ObjectId(playerId) } },
-    );
-    res.status(200).json({ output: appoint });
+    const new_practice = await practices.findOneAndUpdate({code: code}, {$push: {admins: new ObjectId(playerId)}}, {"returnDocument" : "after"})
+    req.practice = new_practice
+    await pushState(req, res)
+    //res.status(200).json({output : appoint})
   } catch (err) {
     res.status(500).json({ error: err });
   }

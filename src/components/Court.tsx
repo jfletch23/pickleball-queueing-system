@@ -125,7 +125,7 @@ export function CourtAdminView({
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-3">
           <button
             onClick={onBack}
-            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg"
+            className="text-sm font-semibold text-th-muted hover:text-th-heading transition-colors px-2 py-1 rounded-lg cursor-pointer"
           >
             ← Courts
           </button>
@@ -135,7 +135,7 @@ export function CourtAdminView({
           </div>
           <button
             onClick={onEndGame}
-            className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors"
+            className="bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer"
           >
             End Game
           </button>
@@ -165,7 +165,7 @@ export function CourtAdminView({
                 ) : (
                   <button
                     onClick={() => onMakeAdmin(player.id)}
-                    className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors"
+                    className="mt-1.5 text-[10px] font-semibold text-th-muted hover:text-orange-600 border border-dashed border-th hover:border-orange-400 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                   >
                     Make Admin
                   </button>
