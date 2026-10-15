@@ -59,3 +59,12 @@ Casey
 -   Wrote useQueueSocket to be able to display changes on React
 -   Store practice code in localHost in case user gets disconnected
 - Added a End Practice button to allow the admin to end the session
+
+# Future Work
+- Comment code fully
+- Get notifications fully tested and working
+- Handle what happens to parties once they are playing
+- Make alert modals instead of using window.alert
+- Add in start button instead of just automatically starting the first full queue chip when no court is available
+- Add in skill level
+- Improve seed data
