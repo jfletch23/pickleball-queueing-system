@@ -10,6 +10,8 @@ type Page = 'login' | 'queue' | 'themes';
 const savedUser = loadSession();
 
 export default function App() {
+  const path = window.location.pathname
+  const isValidPath = path === "/"
   const [page, setPage] = useState<Page>(savedUser !== null ? 'queue' : 'login');
   const [user, setUser] = useState<UserState | null>(savedUser);
   const [theme, setTheme] = useState<ThemeName>('forest');
@@ -77,6 +79,30 @@ export default function App() {
         onBack={() => setPage('queue')}
       />
     );
+  }
+
+  if (!isValidPath) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--th-login-gradient)' }} >
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm mb-5 shadow-xl overflow-hidden">
+              <img
+                src="/pickleball-bat-and-ball-free-vector.jpg"
+                alt="Pickleball"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h1 className="text-4xl font-extrabold text-white tracking-tight drop-shadow mb-6">
+              This page does not exist!
+            </h1>
+            <a href="/" className="text-white/80 hover:text-white bg-white/15 hover:bg-white/25 w-full p-3.5 rounded-xl text-base font-bold shadow-lg transition-colors">
+            Click here to return home
+            </a>
+          </div>
+        </div> 
+      </div>
+    )
   }
 
   if (page === 'queue' && user !== null) {

@@ -884,5 +884,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'dist')));
 
+//Code courtesy of Josue that protects against adding paths in URL causing errors
+//Also have code on the front-end that renders a custom 404 not found page with a home page button (see App.tsx)
+//Basically if my previous middleware does not catch the request it fallsback to this middleware which will always serve the index.html file
+app.get("/{*path}", (req, res) => {
+  res.sendFile("index.html", { root: "dist" });
+});
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
