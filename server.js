@@ -827,13 +827,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'dist')));
 
-//Code courtesy of Josue that protects against adding paths in URL causing errors
-//Also have code on the front-end that renders a custom 404 not found page with a home page button (see App.tsx)
-//Basically if my previous middleware does not catch the request it fallsback to this middleware which will always serve the index.html file
-app.get("/{*path}", (req, res) => {
-  res.sendFile("index.html", { root: "dist" });
-});
-
 //-----------AUTHENTICATION ENDPOINTS-----------------------
 app.post("/api/create/practice", createPractice);
 
@@ -843,35 +836,40 @@ app.post("/api/practice/:code/join", checkPracticeExists, joinPractice);
 
 app.get("/api/auth/status", getAuthStatus)
 
-//Cookie authentication middleware verifying user is logged in before doing any of the following get or post requests
-app.use(authentication_middleware)
-app.post("/api/logout", logout)
+app.post("/api/logout", authentication_middleware, logout)
 
 //-----------PRACTICE ENDPOINTS-----------------------
-app.get("/api/practice/:code", checkPracticeExists, getPractice);
-app.post("/api/practice/:code/delete", checkPracticeExists, deletePractice);
+app.get("/api/practice/:code", authentication_middleware, checkPracticeExists, getPractice);
+app.post("/api/practice/:code/delete", authentication_middleware, checkPracticeExists, deletePractice);
 
-app.post("/api/practice/:code/player/enqueue", checkPracticeExists, enqueuePlayer);
-app.get("/api/practice/:code/state", checkPracticeExists, getState);
-app.post("/api/practice/:code/queue/ready", checkPracticeExists, readyQueueChip);
-app.post("/api/practice/:code/game/end", checkPracticeExists, endGame);
+app.post("/api/practice/:code/player/enqueue", authentication_middleware, checkPracticeExists, enqueuePlayer);
+app.get("/api/practice/:code/state", authentication_middleware, checkPracticeExists, getState);
+app.post("/api/practice/:code/queue/ready", authentication_middleware, checkPracticeExists, readyQueueChip);
+app.post("/api/practice/:code/game/end", authentication_middleware, checkPracticeExists, endGame);
 
-app.post("/api/practice/:code/player/appointadmin", checkPracticeExists, appointAdmin);
-app.post("/api/practice/:code/queue/leave", checkPracticeExists, leaveQueue);
+app.post("/api/practice/:code/player/appointadmin", authentication_middleware, checkPracticeExists, appointAdmin);
+app.post("/api/practice/:code/queue/leave", authentication_middleware, checkPracticeExists, leaveQueue);
 
 //---PARTY ENDPOINTS-----
-app.get("/api/practice/:code/parties", checkPracticeExists, getParties)
+app.get("/api/practice/:code/parties", authentication_middleware, checkPracticeExists, getParties)
 
-app.post("/api/practice/:code/party/create", checkPracticeExists, createParty)
+app.post("/api/practice/:code/party/create", authentication_middleware, checkPracticeExists, createParty)
 
-app.post("/api/practice/:code/party/:partyId/request", checkPracticeExists, checkPartyExists, requestJoinParty)
-app.post("/api/practice/:code/party/:partyId/request/cancel", checkPracticeExists, checkPartyExists, cancelJoinRequest)
-app.post("/api/practice/:code/party/:partyId/request/respond", checkPracticeExists, checkPartyExists, respondToJoinRequest)
+app.post("/api/practice/:code/party/:partyId/request", authentication_middleware, checkPracticeExists, checkPartyExists, requestJoinParty)
+app.post("/api/practice/:code/party/:partyId/request/cancel", authentication_middleware, checkPracticeExists, checkPartyExists, cancelJoinRequest)
+app.post("/api/practice/:code/party/:partyId/request/respond", authentication_middleware, checkPracticeExists, checkPartyExists, respondToJoinRequest)
 
-app.post("/api/practice/:code/party/:partyId/leave", checkPracticeExists, checkPartyExists, leaveParty)
+app.post("/api/practice/:code/party/:partyId/leave", authentication_middleware, checkPracticeExists, checkPartyExists, leaveParty)
 
-app.post("/api/practice/:code/party/:partyId/enqueue", checkPracticeExists, checkPartyExists, enqueueParty)
+app.post("/api/practice/:code/party/:partyId/enqueue", authentication_middleware, checkPracticeExists, checkPartyExists, enqueueParty)
 
+//----CATCH ALL ENDPOINT-----
+//Code courtesy of Josue that protects against adding paths in URL causing errors
+//Also have code on the front-end that renders a custom 404 not found page with a home page button (see App.tsx)
+//Basically if my previous middleware does not catch the request it fallsback to this middleware which will always serve the index.html file
+app.get("/{*path}", (req, res) => {
+  res.sendFile("index.html", { root: "dist" });
+});
 
 //--------------WEBSOCKET---------------------
 const server = http.createServer(app);
