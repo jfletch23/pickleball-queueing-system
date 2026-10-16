@@ -2,7 +2,9 @@
 @import "@fontsource-variable/inter";
 
 /* ── App themes ─────────────────────────────────────────────────────────── */
-
+/* Square brackets mean an HTML attribute selector. so any HTML elements that have a data-theme attribute equal to forest will have these styles applied */
+/* In the app themes section we are am assigning hex color codes to our CSS variables */
+/* th stands for theme */
 [data-theme="forest"] {
   --th-page-bg: #f9fafb;
   --th-header-bg: #ffffff;
@@ -96,11 +98,15 @@
 }
 
 /* ── Base styles ───────────────────────────────────────────────── */
+/* Using the CSS variables defined above in the base and utilities layers below */
+/* @layer defines a hierarchy to our CSS rules, so any styles in the below utilities layer will override the styles in the below base layer */
 @layer base {
+  /* Wildcard selector selects all elements on the page*/
   * {
     border-color: var(--th-border);
     outline-color: var(--th-primary);
   }
+  /* Select elements with body or html tag */
   body {
     background-color: var(--th-page-bg);
     color: var(--th-body);
@@ -113,6 +119,7 @@
 /* ── Theme utility classes ───────────────────────────────────────────────── */
 
 @layer utilities {
+  /* Dot selector means class names */
   .bg-th-page        { background-color: var(--th-page-bg); }
   .bg-th-header      { background-color: var(--th-header-bg); }
   .bg-th-card        { background-color: var(--th-card-bg); }
