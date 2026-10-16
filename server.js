@@ -1,4 +1,5 @@
 import express from "express";
+import cookie from "cookie-session"
 import path from "node:path"
 import { fileURLToPath } from 'node:url';
 import { MongoClient, ObjectId } from "mongodb";
@@ -99,6 +100,37 @@ export const QUEUE_STATUS = Object.freeze({
   CANCELLED: "cancelled",
 });
 
+app.use(cookie({
+  name: "session",
+  keys: [process.env.COOKIE_SECRET_KEY_ONE, process.env.COOKIE_SECRET_KEY_TWO],
+  maxAge: 4 * 60 * 60 * 1000 //4 hours in milliseconds
+}))
+
+const getAuthStatus = (req, res) => {
+  // Force browsers and intermediate proxies never to cache auth checks
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  if (req.session.login === true) {
+    res.status(200).json({uuid : req.session.uuid, username: req.session.username, isAdmin: req.session.isAdmin, practice: req.session.practice})
+  } else {
+    res.status(401).json({error: "Not authenticated"})
+  }
+}
+
+const authentication_middleware = (req, res, next) => {
+  if (req.session.login === true) {
+    next()
+  } else {
+    res.status(401).json({error: "User is not authenticated"})
+  }
+}
+
+const logout = (req, res) => {
+  if (req.session.login === true) {
+    req.session = null
+  }
+  res.status(200).json({success: "User logged out"})
+}
+
 const createPractice = async (req, res) => {
   const { username, password, numCourts } = req.body;
   //Basic data validation, check username and password exist, check numCourts is an integer greater than 0
@@ -123,6 +155,11 @@ const createPractice = async (req, res) => {
   };
   try {
     const result = await practices.insertOne(practice);
+    req.session.login = true
+    req.session.uuid = user.id
+    req.session.username = user.username
+    req.session.isAdmin = true
+    req.session.practice = practice
     res.status(200).json(practice);
   } catch (err) {
     if (err.code === 11000) {
@@ -221,6 +258,11 @@ const joinPractice = async (req, res) => {
         });
         return;
       } else {
+        req.session.login = true
+        req.session.uuid = user.id
+        req.session.username = user.username
+        req.session.isAdmin = false
+        req.session.practice = result
         res.status(200).json({ result, user });
         return;
       }
@@ -241,6 +283,11 @@ const joinPractice = async (req, res) => {
         );
         const complete_user = existing_user.players[0];
         complete_user.isAdmin = isAdmin;
+        req.session.login = true
+        req.session.uuid = complete_user.id
+        req.session.username = complete_user.username
+        req.session.isAdmin = isAdmin
+        req.session.practice = practice
         res.status(201).json({
           success: "Successfully logged in",
           practice: practice,
@@ -774,31 +821,29 @@ const enqueueParty = async(req, res)=>{
   }
 }
 
+//-----------AUTHENTICATION ENDPOINTS-----------------------
 app.post("/api/create/practice", createPractice);
 
-//Custom middleware to check given practice code exists in the database,
-//Need to define it in the .get or .delete or .post because that way it can get the URL parameter for the practice code
+//checkPracticeExists is a custom middleware to check given practice code exists in the database,
+//Need to define it in the .get or .post because that way it can get the URL parameter for the practice code
+app.post("/api/practice/:code/join", checkPracticeExists, joinPractice);
+
+app.get("/api/auth/status", getAuthStatus)
+
+//Cookie authentication middleware verifying user is logged in before doing any of the following get or post requests
+app.use(authentication_middleware)
+app.post("/api/logout", logout)
+
+//-----------PRACTICE ENDPOINTS-----------------------
 app.get("/api/practice/:code", checkPracticeExists, getPractice);
 app.post("/api/practice/:code/delete", checkPracticeExists, deletePractice);
-app.post("/api/practice/:code/join", checkPracticeExists, joinPractice);
-app.post(
-  "/api/practice/:code/player/enqueue",
-  checkPracticeExists,
-  enqueuePlayer,
-);
-app.get("/api/practice/:code/state", checkPracticeExists, getState);
-app.post(
-  "/api/practice/:code/queue/ready",
-  checkPracticeExists,
-  readyQueueChip,
-);
-app.post("/api/practice/:code/game/end", checkPracticeExists, endGame);
-app.post(
-  "/api/practice/:code/player/appointadmin",
-  checkPracticeExists,
-  appointAdmin,
-);
 
+app.post("/api/practice/:code/player/enqueue", checkPracticeExists, enqueuePlayer);
+app.get("/api/practice/:code/state", checkPracticeExists, getState);
+app.post("/api/practice/:code/queue/ready", checkPracticeExists, readyQueueChip);
+app.post("/api/practice/:code/game/end", checkPracticeExists, endGame);
+
+app.post("/api/practice/:code/player/appointadmin", checkPracticeExists, appointAdmin);
 app.post("/api/practice/:code/queue/leave", checkPracticeExists, leaveQueue);
 
 //---PARTY ENDPOINTS-----
