@@ -14,7 +14,7 @@ export default function ThemePage({ current, onSelect, onBack }: ThemePageProps)
         <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-4">
           <button
             onClick={onBack}
-            className="text-th-muted hover:text-th-heading transition-colors p-1 rounded-lg"
+            className="text-th-muted hover:text-th-heading transition-colors p-1 rounded-lg cursor-pointer"
           >
             ← Back
           </button>
