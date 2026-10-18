@@ -2,15 +2,15 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import LoginPage from '@/pages/LoginPage';
 import QueuePage from '@/pages/QueuePage';
 import ThemePage from '@/pages/ThemePage';
-import { type UserState, type ThemeName, type PracticeState } from '@/types';
+import { type UserState, type ThemeName } from '@/types';
 
 //Authenticated Page can either be queue page or themes page, login page is excluded since it is not an authenticated page
 type Page = 'queue' | 'themes';
 
 export default function App() {
-  //User and practice are null at start
+  //User and practiceCode are null at start
   const [user, setUser] = useState<UserState | null>(null);
-  const [practice, setPractice] = useState<PracticeState | null>(null);
+  const [practiceCode, setPracticeCode] = useState<string | null>(null);
   //Loading useState since I am doing a fetch request
   const [loading, setLoading] = useState(true)
 
@@ -29,10 +29,9 @@ export default function App() {
         isAdmin: data.isAdmin
       }
       setUser(user)
-      //Last thing data includes is the practice object to set my practice use state as
-      setPractice(data.practice)
+      //Last thing data includes is the 6 digit practice code
+      setPracticeCode(data.practiceCode)
     } catch (error) {
-      console.log("User is not authenticated")
       setUser(null)
     } finally {
       //Finally block always runs even if an error is caught
@@ -77,13 +76,13 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  //Callback function for when user logs presses the log in button on the log in page
-  function handleEnter(u: UserState, p: PracticeState) {
+  //Callback function for when user presses the log in button on the log in page
+  function handleEnter(u: UserState, practiceCode: string) {
     //Update localStorage, so multiple tabs within same browser (have the same cookie) will get updated from log in screen to queue page
     localStorage.setItem('auth_changed', Date.now().toString());
     //Set user and practice to arguments of callback function, will get passed to queue page
     setUser(u);
-    setPractice(p);
+    setPracticeCode(practiceCode);
     //Set page to queue since user has now logged in
     setAuthenticatedPage('queue');
   }
@@ -92,7 +91,7 @@ export default function App() {
   async function handleLogout() {
     //Back to null for user and practice since on login page
     setUser(null);
-    setPractice(null);
+    setPracticeCode(null);
     //Changes session cookie on server by doing this POST request
     try {
       await fetch("/api/logout", {method: "POST"})
@@ -137,7 +136,7 @@ export default function App() {
     )
   }
   else {
-    if (user !== null) {
+    if (user !== null && practiceCode !== null) {
       if (authenticatedPage === 'themes') {
         return (
           <ThemePage 
@@ -149,7 +148,7 @@ export default function App() {
         return (
           <QueuePage
           user={user}
-          practice={practice}
+          practiceCode={practiceCode}
           onLogout={handleLogout}
           onOpenThemes={() => setAuthenticatedPage('themes')}
           />

@@ -110,7 +110,7 @@ const getAuthStatus = (req, res) => {
   // Force browsers and intermediate proxies never to cache auth checks
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   if (req.session.login === true) {
-    res.status(200).json({uuid : req.session.uuid, username: req.session.username, isAdmin: req.session.isAdmin, practice: req.session.practice})
+    res.status(200).json({uuid : req.session.uuid, username: req.session.username, isAdmin: req.session.isAdmin, practiceCode: req.session.practiceCode})
   } else {
     res.status(401).json({error: "Not authenticated"})
   }
@@ -159,7 +159,7 @@ const createPractice = async (req, res) => {
     req.session.uuid = user.id
     req.session.username = user.username
     req.session.isAdmin = true
-    req.session.practice = practice
+    req.session.practiceCode = practice.code
     res.status(200).json(practice);
   } catch (err) {
     if (err.code === 11000) {
@@ -262,7 +262,7 @@ const joinPractice = async (req, res) => {
         req.session.uuid = user.id
         req.session.username = user.username
         req.session.isAdmin = false
-        req.session.practice = result
+        req.session.practiceCode = code
         res.status(200).json({ result, user });
         return;
       }
@@ -287,7 +287,7 @@ const joinPractice = async (req, res) => {
         req.session.uuid = complete_user.id
         req.session.username = complete_user.username
         req.session.isAdmin = isAdmin
-        req.session.practice = practice
+        req.session.practiceCode = code
         res.status(201).json({
           success: "Successfully logged in",
           practice: practice,

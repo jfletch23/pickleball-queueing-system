@@ -6,13 +6,6 @@ export interface UserState {
   isAdmin: boolean;
 }
 
-export interface PracticeState {
-  code: string;
-  players: UserState[];
-  admins: string[];
-  numCourts: number;
-}
-
 //Come back to this, may need to make modifications (maybe remove rank key, add courtNum, and playingStartTime key??)
 export interface QueueChip {
   _id: string;

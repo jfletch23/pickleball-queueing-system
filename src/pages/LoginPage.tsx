@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { type PracticeState, type UserState } from '../types';
+import {type UserState } from '../types';
 
 type AuthMode = 'join' | 'create';
 
 interface LoginPageProps {
-  onEnter: (user: UserState, practice: PracticeState) => void;
+  onEnter: (user: UserState, practiceCode: string) => void;
 }
 
 export default function LoginPage({ onEnter }: LoginPageProps) {
@@ -30,7 +30,7 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
         const user = practice.players[0]
         //User who just created the practice will always be an admin
         user.isAdmin = true
-        onEnter(user, practice)
+        onEnter(user, practice.code)
       }
       else {
         window.alert("Error creating a new practice, please try again")
@@ -53,16 +53,16 @@ export default function LoginPage({ onEnter }: LoginPageProps) {
       //Creating a new user
       else if (join_practice.status === 200) {
         const {result, user} = await join_practice.json()
-        //Just creating a new user and they are not the practice session owner so therefore they cannot be an admin right off the bat (maybe will be appointed later if we add that as a feature)
+        //Just creating a new user and they are not the practice session owner so therefore they cannot be an admin right off the bat (maybe will be appointed later)
         user.isAdmin = false
-        onEnter(user, result);
+        onEnter(user, result.code);
       }
       //Logging in as a pre-existing user
       else if (join_practice.status === 201) {
         const output = await join_practice.json()
         const practice = output.practice
         const user = output.user
-        onEnter(user, practice)
+        onEnter(user, practice.code)
       }
       else if (join_practice.status === 404) {
         window.alert("Invalid practice code")

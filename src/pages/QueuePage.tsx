@@ -4,7 +4,6 @@ import {
   type QueueChip,
   type PartyLobby,
   type UserState,
-  type PracticeState,
   type DashboardState,
 } from "../types";
 import { CourtCard, CourtAdminView } from "../components/Court.tsx";
@@ -19,14 +18,14 @@ import { useQueueSocket } from "../useQueueSocket";
 
 interface QueuePageProps {
   user: UserState;
-  practice: PracticeState | null;
+  practiceCode: string;
   onLogout: () => void;
   onOpenThemes: () => void;
 }
 
 export default function QueuePage({
   user,
-  practice,
+  practiceCode,
   onLogout,
   onOpenThemes,
 }: QueuePageProps) {
@@ -69,7 +68,7 @@ export default function QueuePage({
   }
 
   //update after every change
-  useQueueSocket<DashboardState>(practice?.code, {
+  useQueueSocket<DashboardState>(practiceCode, {
     onState: applyState,
     onPartyState: applyPartyState,
     onDeleted: () => {
@@ -80,9 +79,9 @@ export default function QueuePage({
 
   //send updates to the server
   async function post(path: string, body: unknown) {
-    if (!practice) return;
+    if (!practiceCode) return;
     try {
-      const res = await fetch(`/api/practice/${practice.code}/${path}`, {
+      const res = await fetch(`/api/practice/${practiceCode}/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -99,9 +98,9 @@ export default function QueuePage({
   }
 
   async function party_post(partyId: string, path: string, body: unknown) {
-    if (!practice) return
+    if (!practiceCode) return
     try {
-      const res = await fetch(`/api/practice/${practice.code}/party/${partyId}/${path}`, {
+      const res = await fetch(`/api/practice/${practiceCode}/party/${partyId}/${path}`, {
         method: "POST",
         headers: {"Content-Type" : "application/json"},
         body: JSON.stringify(body)
@@ -127,8 +126,8 @@ export default function QueuePage({
 
   //-----------Party System Handlers-------
   async function handleCreateParty() {
-    if (!practice) return
-    const response = await fetch(`/api/practice/${practice.code}/party/create`, {
+    if (!practiceCode) return
+    const response = await fetch(`/api/practice/${practiceCode}/party/create`, {
       method: "POST",
       headers: {"Content-Type" : "application/json"},
       body: JSON.stringify({playerId: user.id})
@@ -160,8 +159,8 @@ export default function QueuePage({
   }
 
   async function handleEnterQueueFromPartyLobby(partyId: string) {
-    if (!practice) return
-    const response = await fetch(`/api/practice/${practice.code}/party/${partyId}/enqueue`, {
+    if (!practiceCode) return
+    const response = await fetch(`/api/practice/${practiceCode}/party/${partyId}/enqueue`, {
       method: "POST",
       headers: {"Content-Type" : "application/json"},
       body: JSON.stringify({leaderId: user.id})
@@ -174,7 +173,7 @@ export default function QueuePage({
 
   //---------Other Handlers-----------
   async function handleDeletePractice() {
-    if (!practice) return;
+    if (!practiceCode) return;
     if (
       !window.confirm(
         "End this practice for everyone? This deletes the queue and can't be undone.",
@@ -182,7 +181,7 @@ export default function QueuePage({
     )
       return;
     try {
-      const res = await fetch(`/api/practice/${practice.code}/delete`, {
+      const res = await fetch(`/api/practice/${practiceCode}/delete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ playerId: user.id }),
@@ -323,7 +322,7 @@ export default function QueuePage({
                 Practice
               </span>
               <span className="font-mono font-bold text-th-primary tracking-widest text-sm">
-                {practice?.code}
+                {practiceCode}
               </span>
             </div>
 
