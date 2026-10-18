@@ -29,46 +29,64 @@ export default function QueuePage({
   onLogout,
   onOpenThemes,
 }: QueuePageProps) {
+  //useRef is a React hook that returns a mutable object with a .current attribute, it does not re-render the component when .current changes like a useState would when it gets set
+  //Using this hook for sending a notification only when the user is now in a court, so trying to figure out when a derived state has changed from its initial value
   const isInitialSyncDone = useRef(false)
+  //States for courts and queue, main state components of page that will change
   const [courts, setCourts] = useState<Court[]>([]);
   const [queue, setQueue] = useState<QueueChip[]>([]);
+  //State for current time that gets updated every 1000 milliseconds (every second)
   const [now, setNow] = useState(Date.now());
+  //State for selected queue chip when clicking on a queue chip to get the detailed full page view of the queue chip
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  //Similar to the above state but used for clicking on a court to get the detailed full page view of that court
+  const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(null);
+  //State used to handle what players are admins, basically comes from how in the database we store an array of UUIDS of the admins instead of storing an isAdmin boolean flag with each user
+  //Note because this use state has a type of Set, the set needs to be re-defined each time to trigger a state change rather than just mutated by adding an item to the set
   const [promotedAdminIds, setPromotedAdminIds] = useState<Set<string>>(
     new Set(),
   );
+  //isAdmin is derived state now, gets recomputed when promotedAdminIds gets recomputed
+  //This is better than doing user.isAdmin because that would not get recomputed, though I guess I could make it a useState on its own but I think derived state is better
   const isAdmin = promotedAdminIds.has(user.id)
-  const [selectedCourtNumber, setSelectedCourtNumber] = useState<number | null>(
-    null,
-  );
 
+  //Similar to the courts and queue useStates above but for parties, which is the last dynamic state component of the page
   const [partyLobbies, setPartyLobbies] = useState<PartyLobby[]>([]);
 
-  const userEntryId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
+  //Derived state, it is the ID of the queue chip that has the current user, is null if the current user is not in a queue chip
+  const userCurrentQueueChipId = queue.find((e) => e.players.some((p) => p.id === user.id))?._id ?? null;
 
   //So this line is basically replacing the useState we had before of saving the party lobbby ID the user is currently in into a useState
   //The problem with this is that it was not persisent enough, on page refresh the useState would go back to null but the other party state data would persist and there would be a mismatch
   //Now this is a derived state because partyLobbies is a useState that gets kept along even with page refreshes through a web socket and useEffect
   const userCurrentPartyLobbyId = partyLobbies.find((party) => party.players.some((u) => u.id === user.id))?._id ?? null
   
-
+  //Sets some use states with the current state as passed into this function
   function applyState(state: DashboardState) {
     setCourts(state.courts);
     setQueue(state.queue);
+    //Note need to make a new set instead of mutating current set to get state change to trigger
     setPromotedAdminIds(new Set(state.admins))
+    //If useRef object .current is null (meaning first time calling applyState on this page load)
     if (!isInitialSyncDone.current) {
+      //Derived state finding if current user ID is on a court
       const initialCourt = state.courts.find((c) => c.players.some((p) => p.id === user.id))
+      //prevCourtId is another useRef defined below, setting it to that initial court ID or if the user is not on a court it gets set to null
       prevCourtId.current = initialCourt?._id ?? null
+      //Setting this first useRef object to true, so basically ensures this block of code in the if block only gets run on the first iteration of applyState
       isInitialSyncDone.current = true
     }
   }
 
+  //Similar to above applyState function but for party state, needs to be a separate function because I need to call it separately (see below)
+  //This goes back to my server architecture of having a separate getDashboardState function from getPartiesState
   function applyPartyState(partyState : DashboardState) {
     setPartyLobbies(partyState.parties)
   }
 
-  //update after every change
-  useQueueSocket<DashboardState>(practiceCode, {
+  //Custom react hook for using websockets to update the state
+  //See useQueueSocket.ts for more info
+  useQueueSocket(practiceCode, {
     onState: applyState,
     onPartyState: applyPartyState,
     onDeleted: () => {
@@ -77,35 +95,35 @@ export default function QueuePage({
     },
   });
 
-  //send updates to the server
+  //Generic helper function to send POST requests to server
   async function post(path: string, body: unknown) {
-    if (!practiceCode) return;
     try {
       const res = await fetch(`/api/practice/${practiceCode}/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => null);
+      const data = await res.json();
       if (!res.ok) {
         window.alert(data?.error ?? "Something went wrong, please try again.");
         return;
       }
+      //Update page state
       applyState(data as DashboardState);
     } catch {
       window.alert("Could not reach the server.");
     }
   }
 
+  //Needed to make a separate party post helper function because I don't want to call applyState for the party POST requests, I want to call applyPartyState instead
   async function party_post(partyId: string, path: string, body: unknown) {
-    if (!practiceCode) return
     try {
       const res = await fetch(`/api/practice/${practiceCode}/party/${partyId}/${path}`, {
         method: "POST",
         headers: {"Content-Type" : "application/json"},
         body: JSON.stringify(body)
       })
-      const data = await res.json().catch(() => null);
+      const data = await res.json()
       if (!res.ok) {
         window.alert(data?.error ?? "Something went wrong, please try again.")
         return
@@ -126,14 +144,18 @@ export default function QueuePage({
 
   //-----------Party System Handlers-------
   async function handleCreateParty() {
-    if (!practiceCode) return
-    const response = await fetch(`/api/practice/${practiceCode}/party/create`, {
-      method: "POST",
-      headers: {"Content-Type" : "application/json"},
-      body: JSON.stringify({playerId: user.id})
-    })
-    const data = await response.json()
-    applyPartyState(data)
+    //Can't use party post helper function because I don't need a partyID to create a party
+    try {
+      const response = await fetch(`/api/practice/${practiceCode}/party/create`, {
+        method: "POST",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify({playerId: user.id})
+      })
+      const data = await response.json()
+      applyPartyState(data)
+    } catch (error) {
+      window.alert("Error creating the party")
+    }
   }
 
   function handleRequestJoinPartyLobby(partyId: string) {
@@ -153,27 +175,32 @@ export default function QueuePage({
   }
 
   function handleLeavePartyLobby(partyId: string) {
+    //Do not call POST request if user is not currently in a party to leave
     if (userCurrentPartyLobbyId === null) return;
 
     party_post(partyId, "leave", {playerId: user.id}) 
   }
 
+  //Can't use party_post helper function because my dashboard state is changing since a queue chip is changing so I need to call applyState
   async function handleEnterQueueFromPartyLobby(partyId: string) {
-    if (!practiceCode) return
-    const response = await fetch(`/api/practice/${practiceCode}/party/${partyId}/enqueue`, {
-      method: "POST",
-      headers: {"Content-Type" : "application/json"},
-      body: JSON.stringify({leaderId: user.id})
-    })
-    const data = await response.json()
-    setPartyLobbies(data.partyState.parties)
-    applyState(data)
-
+    try {
+      const response = await fetch(`/api/practice/${practiceCode}/party/${partyId}/enqueue`, {
+        method: "POST",
+        headers: {"Content-Type" : "application/json"},
+        body: JSON.stringify({leaderId: user.id})
+      })
+      const data = await response.json()
+      //Need to call setPartyLobbies to update state with 1 less party (just how the current system is working on the server, may change to make party lobby persist in the future)
+      setPartyLobbies(data.partyState.parties)
+      applyState(data)
+    } catch (error) {
+      window.alert("Error enqueueing party into queue chip")
+    }
   }
 
   //---------Other Handlers-----------
   async function handleDeletePractice() {
-    if (!practiceCode) return;
+    //If user does not confirm the end practice, return otherwise if the user confirms end practice continue function execution
     if (
       !window.confirm(
         "End this practice for everyone? This deletes the queue and can't be undone.",
@@ -191,6 +218,7 @@ export default function QueuePage({
         window.alert("Could not end the practice.");
         return;
       }
+
       onLogout();
     } catch {
       window.alert("Could not reach the server.");
@@ -198,68 +226,85 @@ export default function QueuePage({
   }
 
   async function handleEndGame(courtId: string, courtNumber: number) {
-    void post("game/end", { queueChipId: courtId, courtNumber: courtNumber });
+    post("game/end", { queueChipId: courtId, courtNumber: courtNumber });
     
   }
 
   async function handleMakeAdmin(playerId : string) {
-    void post("player/appointadmin", {playerId: playerId})
+    post("player/appointadmin", {playerId: playerId})
   }
 
   function handleJoinQueueChip() {
-    void post("player/enqueue", {playerId: user.id})
+    post("player/enqueue", {playerId: user.id})
   }
 
   function handleLeaveQueueChip() {
-    void post("queue/leave", {playerId: user.id})
+    post("queue/leave", {playerId: user.id})
+    //This is when the user leaves the queue chip from the detailed view so need to escape from that detailed view page by setting this state to null
     setSelectedEntryId(null)
   }
 
   function handleLeaveQueue() {
-    void post("queue/leave", { playerId: user.id });
+    post("queue/leave", { playerId: user.id });
   }
 
   function handleJoinQueue() {
+    //Get permission for notifications when user joins the queue, eventually need to make this more robust and get the notification permissions when user is put into a queue chip from a party too or when user clicks on a queue chip detailed view and manually joins the queue chip
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
-    void post("player/enqueue", { playerId: user.id });
+    post("player/enqueue", { playerId: user.id });
   }
 
   //Code for notifications, need to use useMemo, useEffect, and useRef in tandem to figure out when derived state updates and not send notification on reload
+  //useMemo makes it so this code gets re-run when either courts state or user input changes
   const userCourt = useMemo(() => {
+    //This code finds the court object that has the user on it
     return courts.find((c) => c.players.some((p) => p.id === user.id))
   }, [courts, user])
 
+  //Get current court ID will be a string ID or null if the user is currently not on a court
   const currentCourtId = userCourt?._id ?? null
-
+  //Initialize a useRef object with the value of that string court ID, so basically prevCourtId.current will be that string ID or null to start
   const prevCourtId = useRef(currentCourtId)
 
+  //useEffect runs whenever currentCourtId or userCourt changes
   useEffect(() => {
+    //If isInitialSyncDone is still null, then don't run the below code
     if (!isInitialSyncDone.current) {
       return
     }
+    //If currentCourtId does not equal prevCourtId.current that means courts state has changed (or technically user has changed) and the useMemo function has re-run
     if (currentCourtId !== prevCourtId.current) {
+      //If it did not change to null meaning the user got off the court, then it must mean the user has gotten on the court
+      //Need to get the entire object and not just the ID in order to be able to reference the court number in the notification body
       if (userCourt) {
         new Notification("You're up!", {
         body: `Head over to Court ${userCourt.courtNumber} and have fun!`
       })
-      } else {
       }
     }
+    //Update useRef current attribute so notification only triggers once
     prevCourtId.current = currentCourtId
   }, [currentCourtId, userCourt]);
 
-  const userOnCourt =
-    courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
+  //Not sure if I need this since it is kind of repeat code but it just gets the court object of the court the user is on, or null if the user is not on any court, also note it is derived state
+  const userOnCourt = courts.find((c) => c.players.some((p) => p.id === user.id)) ?? null;
+  
+  //Getting position of the queue chip user is in, need to add 1 to the index since it starts at 0 but I want to use real language which starts at 1
+  //If user is not in a queue chip, then set this value to 0
+  //Used for a status banner that only displays when userQueuePosition is greater than 0
   const userQueuePosition =
-    userEntryId !== null
-      ? queue.findIndex((e) => e._id === userEntryId) + 1
+      userCurrentQueueChipId !== null
+      ? queue.findIndex((e) => e._id === userCurrentQueueChipId) + 1
       : 0;
+  //Amount of courts that have players
   const activeCourtsCount = courts.filter((c) => c.players.length > 0).length;
 
   // Court admin view
+  //If in a selected court and user is an admin
   if (selectedCourtNumber !== null && isAdmin) {
+    //Get the court object based on that selected court number
     const selectedCourt = courts.find((c) => c.courtNumber === selectedCourtNumber);
     if (selectedCourt !== undefined && selectedCourt.players.length > 0) {
       return (
@@ -279,6 +324,7 @@ export default function QueuePage({
 
   // Queue entry detail view
   if (selectedEntryId !== null) {
+    //Get queue chip object from queue chip ID
     const selectedEntry = queue.find((e) => e._id === selectedEntryId);
     if (selectedEntry !== undefined) {
       const position = queue.indexOf(selectedEntry) + 1;
@@ -371,7 +417,7 @@ export default function QueuePage({
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Status Banner */}
         {(userOnCourt !== null ||
-          (userEntryId !== null && userQueuePosition > 0)) && (
+          (userCurrentQueueChipId !== null && userQueuePosition > 0)) && (
           <div
             className={`rounded-2xl p-4 flex items-center gap-3 ${
               userOnCourt !== null
@@ -434,7 +480,7 @@ export default function QueuePage({
                 Group up with friends before you join the queue.
               </p>
             </div>
-            {userEntryId === null &&
+            {userCurrentQueueChipId === null &&
               userOnCourt === null &&
               userCurrentPartyLobbyId === null && (
                 <button
@@ -463,7 +509,7 @@ export default function QueuePage({
                   isUserLobby={lobby._id === userCurrentPartyLobbyId}
                   isPartyLeader={lobby.leaderId === user.id}
                   canJoin={
-                    userEntryId === null &&
+                    userCurrentQueueChipId === null &&
                     userOnCourt === null &&
                     userCurrentPartyLobbyId === null
                   }
@@ -492,7 +538,7 @@ export default function QueuePage({
             </div>
 
             <div className="flex gap-2">
-              {userEntryId === null &&
+              {userCurrentQueueChipId === null &&
                 userOnCourt === null &&
                 userCurrentPartyLobbyId === null && (
                   <button
@@ -502,7 +548,7 @@ export default function QueuePage({
                     + Join Solo
                   </button>
                 )}
-              {userEntryId !== null && (
+              {userCurrentQueueChipId !== null && (
                 <button
                   onClick={handleLeaveQueue}
                   className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors cursor-pointer"
@@ -535,7 +581,7 @@ export default function QueuePage({
                   key={entry._id}
                   entry={entry}
                   position={index + 1}
-                  isUser={entry._id === userEntryId}
+                  isUser={entry._id === userCurrentQueueChipId}
                   onClick={() => setSelectedEntryId(entry._id)}
                 />
               ))}
