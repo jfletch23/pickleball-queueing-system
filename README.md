@@ -61,7 +61,6 @@ Casey
 - Added a End Practice button to allow the admin to end the session
 
 # Future Work
-- Make theme persist by using a cookie (probably a client side cookie)
 - Comment code fully
 - Add loading spinner to queue page for when courts and queue chips are loading
 - Get notifications fully tested and working

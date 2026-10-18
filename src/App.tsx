@@ -14,6 +14,13 @@ export default function App() {
   //Loading useState since I am doing a fetch request
   const [loading, setLoading] = useState(true)
 
+  //Use state for which authenticated page is being displayed to the user
+  //Since this is a single page app with only ~3 pages I am not using React router and just using a useState to toggle between what content is displayed
+  const [authenticatedPage, setAuthenticatedPage] = useState<Page>('queue');
+  //Theme useState, defaults to Forest theme, getting theme from localStorage key userTheme
+  const initialTheme = localStorage.getItem("userTheme") as ThemeName || "forest"
+  const [theme, setTheme] = useState<ThemeName>(initialTheme);
+
   //Function to do a GET request to server to check user's auth status
   const checkAuthStatus = async () => {
     try {
@@ -40,7 +47,7 @@ export default function App() {
     }
   }
 
-  //Check auth status upon page load
+  //Check auth status upon page load and setTheme to the current value in local storage
   useEffect(() => {
     checkAuthStatus()
   }, [])
@@ -49,10 +56,15 @@ export default function App() {
   //This works by using local storage by setting the key auth_changed to the current timestamp whenever the user logs in or logs out
   //If that key has changed, it rechecks auth status
   //Uses an event listener for local storage which is registered on page load in this useEffect
+  //Also using this code to change the user theme when it gets changed in 1 tab it gets changed in the other tab
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'auth_changed') {
         checkAuthStatus()
+      }
+      //Need to check that event.newValue is not null because storage event listener would trigger even when the key gets deleted or cleared
+      if (event.key === 'userTheme' && event.newValue) {
+        setTheme(event.newValue as ThemeName)
       }
     }
     window.addEventListener('storage', handleStorageChange)
@@ -64,17 +76,17 @@ export default function App() {
   const path = window.location.pathname
   const isValidPath = path === "/"
 
-  //Use state for which authenticated page is being displayed to the user
-  //Since this is a single page app with only ~3 pages I am not using React router and just using a useState to toggle between what content is displayed
-  const [authenticatedPage, setAuthenticatedPage] = useState<Page>('queue');
-  //Theme useState, defaults to Forest theme
-  const [theme, setTheme] = useState<ThemeName>('forest');
-
   //UseLayoutEffect is used for toggling the theme, whenever theme use state changes it updates by setting the attribute to be a different theme
   //In index.css it is using an attribute selector (square brackets) based on the value of the data-theme attribute
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  function handleSelectTheme(t : ThemeName) {
+    setTheme(t)
+    localStorage.setItem("userTheme", t)
+    setAuthenticatedPage("queue")
+  }
 
   //Callback function for when user presses the log in button on the log in page
   function handleEnter(u: UserState, practiceCode: string) {
@@ -141,7 +153,7 @@ export default function App() {
         return (
           <ThemePage 
           current={theme} 
-          onSelect={(t) => {setTheme(t); setAuthenticatedPage('queue');}} 
+          onSelect={handleSelectTheme} 
           onBack={() => setAuthenticatedPage('queue')} />
         )
       } else if (authenticatedPage === 'queue') {
