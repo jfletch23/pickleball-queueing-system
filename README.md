@@ -62,7 +62,6 @@ Casey
 
 # Future Work
 - Comment code fully
-- Add loading spinner to queue page for when courts and queue chips are loading
 - Get notifications fully tested and working
 - Handle what happens to parties once they are playing
 - Make alert modals instead of using window.alert

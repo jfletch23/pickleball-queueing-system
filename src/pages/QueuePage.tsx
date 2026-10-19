@@ -37,6 +37,8 @@ export default function QueuePage({
   const [queue, setQueue] = useState<QueueChip[]>([]);
   //State for current time that gets updated every 1000 milliseconds (every second)
   const [now, setNow] = useState(Date.now());
+  //Loading state for displaying a spinner when state is loading
+  const [loading, setLoading] = useState(true)
   //State for selected queue chip when clicking on a queue chip to get the detailed full page view of the queue chip
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   //Similar to the above state but used for clicking on a court to get the detailed full page view of that court
@@ -87,7 +89,7 @@ export default function QueuePage({
   //Custom react hook for using websockets to update the state
   //See useQueueSocket.ts for more info
   useQueueSocket(practiceCode, {
-    onState: applyState,
+    onState: (state) => {applyState(state); setLoading(false)},
     onPartyState: applyPartyState,
     onDeleted: () => {
       window.alert("This practice was ended.");
@@ -447,147 +449,156 @@ export default function QueuePage({
           </div>
         )}
 
-        {/* Courts */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-th-heading">Courts</h2>
-            <span className="text-sm text-th-muted font-medium">
-              {activeCourtsCount}/{courts.length} active
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {courts.map((court) => (
-              <CourtCard
-                key={court.courtNumber}
-                court={court}
-                now={now}
-                isAdmin={isAdmin}
-                onEndGame={() => handleEndGame(court._id, court.courtNumber)}
-                onClick={isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Party Lobbies */}
-        <section>
-          <div className="flex items-start justify-between mb-4 gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-th-heading">
-                Party Lobbies
-              </h2>
-              <p className="text-xs text-th-muted mt-0.5">
-                Group up with friends before you join the queue.
-              </p>
+        {/* Loading Spinner */}
+        {loading ? 
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+          <span className="ml-3 text-gray-600">Loading...</span>
+        </div> 
+        : (
+        <div>
+          {/* Courts */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-th-heading">Courts</h2>
+              <span className="text-sm text-th-muted font-medium">
+                {activeCourtsCount}/{courts.length} active
+              </span>
             </div>
-            {userCurrentQueueChipId === null &&
-              userOnCourt === null &&
-              userCurrentPartyLobbyId === null && (
-                <button
-                  onClick={handleCreateParty}
-                  className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
-                >
-                  🎉 Start a Party
-                </button>
-              )}
-          </div>
-
-          {partyLobbies.length === 0 ? (
-            <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
-              <div className="text-2xl mb-1">🙁</div>
-              <div className="font-semibold">No open parties</div>
-              <div className="text-xs mt-0.5">
-                Start one to play with friends.
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {partyLobbies.map((lobby) => (
-                <PartyLobbyRow
-                  key={lobby._id}
-                  lobby={lobby}
-                  isUserLobby={lobby._id === userCurrentPartyLobbyId}
-                  isPartyLeader={lobby.leaderId === user.id}
-                  canJoin={
-                    userCurrentQueueChipId === null &&
-                    userOnCourt === null &&
-                    userCurrentPartyLobbyId === null
-                  }
-                  hasPendingRequest={lobby.requests.some((request) => request.id === user.id)}
-                  pendingRequests={lobby.requests}
-                  onRequestJoin={() => handleRequestJoinPartyLobby(lobby._id)}
-                  onCancelRequest={() => handleCancelPartyJoinRequest(lobby._id)}
-                  onEnterQueue={() => handleEnterQueueFromPartyLobby(lobby._id)}
-                  onLeave={handleLeavePartyLobby}
-                  onApprove={handleApprovePartyJoinRequest}
-                  onDeny={handleDenyPartyJoinRequest}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {courts.map((court) => (
+                <CourtCard
+                  key={court.courtNumber}
+                  court={court}
+                  now={now}
+                  isAdmin={isAdmin}
+                  onEndGame={() => handleEndGame(court._id, court.courtNumber)}
+                  onClick={isAdmin && court.players.length > 0 ? () => setSelectedCourtNumber(court.courtNumber) : undefined}
                 />
               ))}
             </div>
-          )}
-        </section>
+          </section>
 
-        {/* Queue */}
-        <section>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-th-heading">Queue</h2>
-              <span className="text-sm font-bold text-white bg-gray-400 px-2.5 py-0.5 rounded-full">
-                {queue.length}
-              </span>
-            </div>
-
-            <div className="flex gap-2">
+          {/* Party Lobbies */}
+          <section>
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-th-heading">
+                  Party Lobbies
+                </h2>
+                <p className="text-xs text-th-muted mt-0.5">
+                  Group up with friends before you join the queue.
+                </p>
+              </div>
               {userCurrentQueueChipId === null &&
                 userOnCourt === null &&
                 userCurrentPartyLobbyId === null && (
                   <button
-                    onClick={handleJoinQueue}
-                    className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer"
+                    onClick={handleCreateParty}
+                    className="px-4 py-2 rounded-xl text-sm font-bold border border-th hover:border-th-primary text-th-primary transition-colors cursor-pointer transition-all duration-200 hover:bg-th-primary/5 hover:-translate-y-0.5 hover:shadow-sm"
                   >
-                    + Join Solo
+                    🎉 Start a Party
                   </button>
                 )}
-              {userCurrentQueueChipId !== null && (
-                <button
-                  onClick={handleLeaveQueue}
-                  className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors cursor-pointer"
-                >
-                  Leave Queue
-                </button>
-              )}
             </div>
-          </div>
 
-          {queue.length === 0 ? (
-            <div className="text-center py-14 text-th-muted">
-              <img
-                src="/pickleball-bat-and-ball-free-vector.jpg"
-                alt="Pickleball"
-                className="w-14 h-14 object-cover rounded-full opacity-30 mx-auto mb-3"
-              />
-              <div className="font-semibold text-lg">Queue is empty</div>
-              <div className="text-sm mt-1">
-                Join the queue to get on a court.
+            {partyLobbies.length === 0 ? (
+              <div className="text-center py-8 text-th-muted border-2 border-dashed border-th rounded-2xl">
+                <div className="text-2xl mb-1">🙁</div>
+                <div className="font-semibold">No open parties</div>
+                <div className="text-xs mt-0.5">
+                  Start one to play with friends.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {partyLobbies.map((lobby) => (
+                  <PartyLobbyRow
+                    key={lobby._id}
+                    lobby={lobby}
+                    isUserLobby={lobby._id === userCurrentPartyLobbyId}
+                    isPartyLeader={lobby.leaderId === user.id}
+                    canJoin={
+                      userCurrentQueueChipId === null &&
+                      userOnCourt === null &&
+                      userCurrentPartyLobbyId === null
+                    }
+                    hasPendingRequest={lobby.requests.some((request) => request.id === user.id)}
+                    pendingRequests={lobby.requests}
+                    onRequestJoin={() => handleRequestJoinPartyLobby(lobby._id)}
+                    onCancelRequest={() => handleCancelPartyJoinRequest(lobby._id)}
+                    onEnterQueue={() => handleEnterQueueFromPartyLobby(lobby._id)}
+                    onLeave={handleLeavePartyLobby}
+                    onApprove={handleApprovePartyJoinRequest}
+                    onDeny={handleDenyPartyJoinRequest}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Queue */}
+          <section>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-th-heading">Queue</h2>
+                <span className="text-sm font-bold text-white bg-gray-400 px-2.5 py-0.5 rounded-full">
+                  {queue.length}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                {userCurrentQueueChipId === null &&
+                  userOnCourt === null &&
+                  userCurrentPartyLobbyId === null && (
+                    <button
+                      onClick={handleJoinQueue}
+                      className="bg-th-primary px-4 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer"
+                    >
+                      + Join Solo
+                    </button>
+                  )}
+                {userCurrentQueueChipId !== null && (
+                  <button
+                    onClick={handleLeaveQueue}
+                    className="px-4 py-2 rounded-xl text-sm font-bold bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 transition-colors cursor-pointer"
+                  >
+                    Leave Queue
+                  </button>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-th-muted mb-3">
-                Tap a group to view or join them.
-              </p>
-              {queue.map((entry, index) => (
-                <QueueEntryRow
-                  key={entry._id}
-                  entry={entry}
-                  position={index + 1}
-                  isUser={entry._id === userCurrentQueueChipId}
-                  onClick={() => setSelectedEntryId(entry._id)}
+
+            {queue.length === 0 ? (
+              <div className="text-center py-14 text-th-muted">
+                <img
+                  src="/pickleball-bat-and-ball-free-vector.jpg"
+                  alt="Pickleball"
+                  className="w-14 h-14 object-cover rounded-full opacity-30 mx-auto mb-3"
                 />
-              ))}
-            </div>
-          )}
-        </section>
+                <div className="font-semibold text-lg">Queue is empty</div>
+                <div className="text-sm mt-1">
+                  Join the queue to get on a court.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-th-muted mb-3">
+                  Tap a group to view or join them.
+                </p>
+                {queue.map((entry, index) => (
+                  <QueueEntryRow
+                    key={entry._id}
+                    entry={entry}
+                    position={index + 1}
+                    isUser={entry._id === userCurrentQueueChipId}
+                    onClick={() => setSelectedEntryId(entry._id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>)}
       </main>
     </div>
   );
