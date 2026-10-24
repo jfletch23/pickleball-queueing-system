@@ -61,7 +61,6 @@ Casey
 - Added a End Practice button to allow the admin to end the session
 
 # Future Work
-- Make session code displayed on mobile layout
 - Comment code fully
 - Get notifications fully tested and working
 - Handle what happens to parties once they are playing

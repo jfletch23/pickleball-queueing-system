@@ -365,8 +365,8 @@ export default function QueuePage({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-th-primary-light rounded-lg">
-              <span className="text-xs font-medium text-th-primary-light">
+            <div className="sm:flex items-center gap-1.5 px-3 py-1.5 bg-th-primary-light rounded-lg">
+              <span className="hidden sm:flex text-xs font-medium text-th-primary-light">
                 Practice
               </span>
               <span className="font-mono font-bold text-th-primary tracking-widest text-sm">
@@ -375,8 +375,11 @@ export default function QueuePage({
             </div>
 
             {isAdmin && (
-              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded-full">
+              <span>
+              <span className="hidden sm:inline text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded-full">
                 Admin
+              </span>
+              <span className="sm:hidden">🛡️</span>
               </span>
             )}
 
