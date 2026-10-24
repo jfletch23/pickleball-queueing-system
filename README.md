@@ -12,7 +12,7 @@ To address this problem, we designed a web app to function as this queue system,
 
 
 ## Instructions
-After going to the deployed URL, you can either create a new practice or join an existing one. We have one in the database using this code (`LNS12N`) with seeded data. The admin account for this practice has the username `admin` and the password `admin`. You can log into the seeded player accounts by using `player{number}` as the username and `pass{number}` as the password. You can also create your own account as long as it is not an existing username. 
+After going to the deployed URL, you can either create a new practice or join an existing one. We have one in the database using this code (`42OVC9`) with seeded data. The admin account for this practice has the username `admin` and the password `admin`. You can log into the seeded player accounts by using `player{number}` as the username and `pass{number}` as the password. You can also create your own account as long as it is not an existing username. 
 
 ## Tech Stack
 - React for front-end framework and components
@@ -61,6 +61,7 @@ Casey
 - Added a End Practice button to allow the admin to end the session
 
 # Future Work
+- Make session code displayed on mobile layout
 - Comment code fully
 - Get notifications fully tested and working
 - Handle what happens to parties once they are playing
